@@ -8,6 +8,8 @@ from twisted.internet import threads
 def defer_to_thread(fnc):
     def wrapper(*args, **kwargs):
         return threads.deferToThread(fnc, *args, **kwargs)
+    wrapper.__name__ = fnc.__name__
+    wrapper.__doc__ = fnc.__doc__
     return wrapper
 
 

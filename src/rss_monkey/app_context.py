@@ -2,7 +2,7 @@
 
 import logging
 
-from ConfigParser import ConfigParser
+from ConfigParser import RawConfigParser
 from springpython.config import Object, PythonConfig
 from springpython.container import ObjectContainer
 from springpython.context import ApplicationContext
@@ -32,7 +32,7 @@ class AppContext(object):
 class AppConfig(PythonConfig):
     def __init__(self):
         super(AppConfig, self).__init__()
-        self.config = ConfigParser()
+        self.config = RawConfigParser()
         self.config.read(CONFIG_FILE)
 
         format = self.config.get('logging', 'logging_format')
@@ -52,10 +52,10 @@ class AppConfig(PythonConfig):
         LOG.debug('Loading feed_processor from AppConfig')
         from rss_monkey.feed_processor import FeedProcessor
         processor = FeedProcessor()
-        processor.download_period = self.config.get('feed_processor', 'download_period')
-        processor.download_timeout = self.config.get('feed_processor', 'download_timeout')
+        processor.download_interval = self.config.getint('feed_processor', 'download_interval')
+        processor.download_timeout = self.config.getint('feed_processor', 'download_timeout')
 
-        pool_size = self.config.get('feed_processor', 'pool_size')
+        pool_size = self.config.getint('feed_processor', 'pool_size')
         if pool_size > 0:
             reactor.suggestThreadPoolSize(pool_size)
 

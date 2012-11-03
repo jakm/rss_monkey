@@ -47,7 +47,7 @@ class ProcessFeedTest(unittest.TestCase):
         updated_feed = self.db.load(Feed, feed_id)
         self.assertTrue(updated_feed.title, 'Feed were not updated')
 
-    def test_plan_jobs(self):
+    def test_process_feeds(self):
 
         # prepare test feeds
         feed_urls = ['http://www.abclinuxu.cz/auto/zpravicky.rss',
@@ -62,7 +62,7 @@ class ProcessFeedTest(unittest.TestCase):
 
         # test FeedProcessor
         processor = FeedProcessor()
-        dl = processor.plan_jobs()
+        dl = processor.process_feeds()
 
         def check_result(result):
             for res in result:

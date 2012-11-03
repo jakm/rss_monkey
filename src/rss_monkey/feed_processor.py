@@ -3,7 +3,7 @@
 import feedparser
 import logging
 from datetime import datetime
-from twisted.internet import defer, threads
+from twisted.internet import defer, task, threads
 
 from rss_monkey.app_context import AppContext
 from rss_monkey.model import Feed, FeedEntry
@@ -81,11 +81,21 @@ class FeedParser(object):
 
 
 class FeedProcessor(object):
+    db = None
+    download_interval = None
+    download_timeout = None  # TODO: timeout!!!
+    task = None
+
     def __init__(self):
         self.db = AppContext.get_object('db')
 
     @log_function_call()
     def plan_jobs(self):
+        self.task = task.LoopingCall(self.process_feeds)
+        return self.task.start(self.download_interval, now=False)
+
+    @log_function_call()
+    def process_feeds(self):
         feed_ids = self._get_feed_ids()
 
         defers = []

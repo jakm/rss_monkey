@@ -10,13 +10,6 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 
-# def setup_logging(level):
-#     import logging
-#     format = ('[%(asctime)s] PID=%(process)d TID=%(thread)d %(name)s: '
-#         '%(levelname)s %(message)s')
-#     logging.basicConfig(format=format, level=level)
-
-
 class ContainerMock(PythonConfig):
     def __init__(self, objects):
         super(ContainerMock, self).__init__()

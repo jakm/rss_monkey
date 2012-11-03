@@ -5,7 +5,6 @@ from twisted.application import service
 
 from rss_monkey import app_context
 
-logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger('FeedProcessorService')
 
 

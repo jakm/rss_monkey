@@ -35,16 +35,58 @@ class AppConfig(PythonConfig):
         self.config = RawConfigParser()
         self.config.read(CONFIG_FILE)
 
-        format = self.config.get('logging', 'logging_format')
-        level = self.config.getint('logging', 'logging_level')
-        logging.basicConfig(format=format, level=level)
+        format = self.config.get('logging', 'format')
+        level = self.config.getint('logging', 'level')
+        filename = self.config.get('logging', 'filename')
+        if filename == '' or filename == 'stdout':
+            filename = None
+
+        logging.basicConfig(format=format, level=level, filename=filename)
 
     @Object(lazy_init=True)
-    def db(self):
-        LOG.debug('Loading db from AppConfig')
+    def db_engine(self):
+        LOG.debug('Loading db engine from AppConfig')
+        from sqlalchemy import create_engine
+
+        host = self.config.get('database', 'host')
+        user = self.config.get('database', 'user')
+        passwd = self.config.get('database', 'passwd')
+        db = self.config.get('database', 'db')
+        pool_size = self.config.getint('database', 'pool_size')
+
+        LOG.debug('Database: host=%s, user=%s, passwd=***, db=%s, pool_size=%d',
+            host,  user, passwd, db, pool_size)
+
+        connection_string = 'mysql://%s:%s@%s/%s?charset=utf8' % (
+            user, passwd, host, db)
+        kwargs = {'pool_size': pool_size} if pool_size >= 0 else {}
+
+        return create_engine(connection_string, **kwargs)
+
+    @Object(lazy_init=True)
+    def db_session(self):
+        LOG.debug('Loading db session from AppConfig')
+        from sqlalchemy.orm import sessionmaker
+
+        engine = self.db_engine()
+
+        Session = sessionmaker(bind=engine)
+        return Session()
+
+    @Object(lazy_init=True)
+    def sync_db(self):
+        LOG.debug('Loading sync db from AppConfig')
+        from rss_monkey.db import SyncDb
+        db = SyncDb()
+        db.session = self.db_session()
+        return db
+
+    @Object(lazy_init=True)
+    def async_db(self):
+        LOG.debug('Loading async db from AppConfig')
         from rss_monkey.db import AsyncDb
         db = AsyncDb()
-        db.session = None  # TODO
+        db.session = self.db_session()
         return db
 
     @Object(lazy_init=True)

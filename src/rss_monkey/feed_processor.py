@@ -39,12 +39,16 @@ class FeedParser(object):
             channel['modified'] = feed.modified_parsed
         elif 'published' in feed:
             channel['modified'] = feed.published_parsed
+        elif 'updated' in feed:
+            channel['modified'] = feed.updated_parsed
         else:
             if feed.entries:
                 if 'modified' in feed.entries[0]:
                     channel['modified'] = feed.entries[0].date_parsed
                 elif 'published' in feed.entries[0]:
                     channel['modified'] = feed.entries[0].published_parsed
+                elif 'updated' in feed.entries[0]:
+                    channel['modified'] = feed.entries[0].updated_parsed
 
         if channel['modified'] is not None:
             channel['modified'] = self._time_struct_to_datetime(channel['modified'])
@@ -87,7 +91,7 @@ class FeedProcessor(object):
     task = None
 
     def __init__(self):
-        self.db = AppContext.get_object('db')
+        self.db = AppContext.get_object('sync_db')
 
     @log_function_call()
     def plan_jobs(self):
@@ -128,10 +132,10 @@ class FeedProcessor(object):
 
     @log_function_call(log_params=False)
     def update_feed(self, feed, data):
+        channel = data[0]
 
         if feed.modified is None:
             LOG.debug('Feed %d: storing channel data', feed.id)
-            channel = data[0]
             feed.title = channel['title']
             feed.description = channel['description']
             feed.link = channel['link']
@@ -154,4 +158,3 @@ class FeedProcessor(object):
     @log_function_call()
     def errback(self, failure, feed_id):
         LOG.error('Can not download feed %d: %s', feed_id, failure.getErrorMessage())
-        raise failure

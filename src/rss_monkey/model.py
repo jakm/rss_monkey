@@ -12,10 +12,10 @@ class Feed(Base):
     __tablename__ = 'feeds'
 
     id = Column(Integer, primary_key=True)
-    url = Column(String, index=True)
-    title = Column(String, index=True)
-    description = Column(String)
-    link = Column(String)
+    url = Column(String(255), index=True)
+    title = Column(String(255), index=True)
+    description = Column(String(1024))
+    link = Column(String(255))
     modified = Column(DateTime)
     entries = relationship('FeedEntry', order_by='FeedEntry.date',
         backref='feed', cascade="all, delete, delete-orphan")
@@ -26,7 +26,7 @@ class FeedEntry(Base):
 
     id = Column(Integer, primary_key=True)
     feed_id = Column(Integer, ForeignKey('feeds.id'))
-    title = Column(String)
-    summary = Column(String)
-    link = Column(String)
+    title = Column(String(255))
+    summary = Column(String(1024))
+    link = Column(String(255))
     date = Column(DateTime)

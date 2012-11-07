@@ -25,7 +25,7 @@ class AppContext(object):
     @staticmethod
     def install(app_context):
         if not isinstance(app_context, ObjectContainer):
-            raise TypeError('Context have to inherit from ObjectContainer')
+            raise TypeError('Context has to inherit from ObjectContainer')
         AppContext._context = app_context
 
 

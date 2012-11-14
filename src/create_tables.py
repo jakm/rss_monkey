@@ -4,7 +4,7 @@
 from optparse import OptionParser
 
 from rss_monkey.common import app_context
-from rss_monkey.common.model.entities import Base
+from rss_monkey.common.model import Base
 
 
 def main():

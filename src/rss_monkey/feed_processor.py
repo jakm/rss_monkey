@@ -6,7 +6,7 @@ from datetime import datetime
 from twisted.internet import defer, task, threads
 
 from rss_monkey.common.app_context import AppContext
-from rss_monkey.common.model import Feed, FeedEntry
+from rss_monkey.common.model.entities import Feed, FeedEntry
 from rss_monkey.common.utils import log_function_call
 
 logging.basicConfig()

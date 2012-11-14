@@ -6,10 +6,10 @@
 
 from twisted.trial import unittest
 
-from rss_monkey.db import SyncDb
-from rss_monkey.app_context import AppContext
+from rss_monkey.common.app_context import AppContext
+from rss_monkey.common.db import SyncDb
+from rss_monkey.common.model import Feed
 from rss_monkey.feed_processor import FeedProcessor
-from rss_monkey.model import Feed
 
 from utils import ContainerMock, DbMock
 

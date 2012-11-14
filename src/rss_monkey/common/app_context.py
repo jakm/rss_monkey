@@ -10,6 +10,7 @@ from twisted.internet import reactor
 
 CONFIG_FILE = '/etc/rss_monkey.ini'
 
+logging.basicConfig()
 LOG = logging.getLogger(__name__)
 
 

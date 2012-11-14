@@ -5,9 +5,9 @@ import logging
 from datetime import datetime
 from twisted.internet import defer, task, threads
 
-from rss_monkey.app_context import AppContext
-from rss_monkey.model import Feed, FeedEntry
-from rss_monkey.utils import log_function_call
+from rss_monkey.common.app_context import AppContext
+from rss_monkey.common.model import Feed, FeedEntry
+from rss_monkey.common.utils import log_function_call
 
 logging.basicConfig()
 LOG = logging.getLogger(__name__)
@@ -146,12 +146,10 @@ class FeedProcessor(object):
         records = data[1]
         for record in records:
             entry = FeedEntry(title=record['title'],
-                               summary=record['summary'],
-                               link=record['link'],
-                               date=record['date'])
-
-            feed.entries.append(entry)
-            LOG.debug('Feed %d: new entry %s', feed.id, repr(entry))
+                              summary=record['summary'],
+                              link=record['link'],
+                              date=record['date'])
+            feed.add_entry(entry)
 
         self.db.commit()
 

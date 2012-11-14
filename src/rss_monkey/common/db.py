@@ -2,7 +2,7 @@
 
 from sqlalchemy.orm.query import Query
 
-from rss_monkey.utils import defer_to_thread, log_function_call
+from rss_monkey.common.utils import defer_to_thread, log_function_call
 
 
 class SyncDb(object):

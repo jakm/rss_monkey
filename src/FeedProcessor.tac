@@ -3,7 +3,7 @@
 import logging
 from twisted.application import service
 
-from rss_monkey import app_context
+from rss_monkey.common import app_context
 
 LOG = logging.getLogger('FeedProcessorService')
 

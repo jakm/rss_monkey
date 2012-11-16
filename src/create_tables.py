@@ -28,11 +28,14 @@ def main():
         if answer != 'yes':
             exit()
 
-    app_context.install_default()
+    app_context.install_context(app_context.AppConfig())
 
     engine = app_context.AppContext.get_object('db_engine')
 
-    Base.metadata.create_all(bind=engine, checkfirst=(not options.force))
+    if options.force:
+        Base.metadata.drop_all(bind=engine)
+
+    Base.metadata.create_all(bind=engine)
 
 if __name__ == '__main__':
     main()

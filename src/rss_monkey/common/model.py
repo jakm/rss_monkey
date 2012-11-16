@@ -60,7 +60,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     login = Column(String(20), index=True, unique=True, nullable=False)
-    passwd = Column(String(50), nullable=False)
+    passwd = Column(String(64), nullable=False)
 
     feeds = relationship('Feed',
                 secondary=user_feed_table,

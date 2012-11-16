@@ -41,7 +41,10 @@ def DbMock(db_class, metadata):
     mock = MagicMock()
     mock._session = session
     mock._db = db
-    mock.load.side_effect = lambda cls, id: mock._db.load(cls, id)
+
+    def load(cls, **kwargs):
+        return mock._db.load(cls, **kwargs)
+    mock.load.side_effect = load
 
     def store(object, commit=False):
         return mock._db.store(object, commit)
@@ -50,6 +53,7 @@ def DbMock(db_class, metadata):
     def store_all(object, commit=False):
         return mock._db.store_all(object, commit)
     mock.store_all.side_effect = store_all
+
     mock.query.side_effect = lambda entities: mock._db.query(entities) # TODO: mock pro query
     mock.commit.side_effect = lambda: mock._db.commit()
     mock.rollback.side_effect = lambda: mock._db.rollback()

@@ -44,7 +44,7 @@ class ProcessFeedTest(unittest.TestCase):
         processor.process_feed(feed_id)
 
         # check result
-        updated_feed = self.db.load(Feed, feed_id)
+        updated_feed = self.db.load(Feed, id=feed_id)
         self.assertTrue(updated_feed.title, 'Feed was not updated')
 
     def test_process_feeds(self):
@@ -72,7 +72,7 @@ class ProcessFeedTest(unittest.TestCase):
                                           failure.getErrorMessage()))
 
             for feed_id in feed_ids:
-                updated_feed = self.db.load(Feed, feed_id)
+                updated_feed = self.db.load(Feed, id=feed_id)
                 self.assertTrue(updated_feed.title,
                     'Feed was not updated (url: %s)' % updated_feed.url)
                 self.assertGreater(len(updated_feed.entries), 0,

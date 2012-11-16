@@ -122,7 +122,7 @@ class FeedProcessor(object):
 
     @log_function_call()
     def get_feed_from_db(self, feed_id):
-        return self.db.load(Feed, feed_id)
+        return self.db.load(Feed, id=feed_id)
 
     @log_function_call(log_result=False)
     def download_feed(self, feed):

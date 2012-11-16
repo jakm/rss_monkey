@@ -8,8 +8,8 @@ from rss_monkey.common.utils import defer_to_thread, log_function_call
 class SyncDb(object):
     session = None
 
-    def load(self, cls, id):
-        return self.session.query(cls).filter_by(id=id).one()
+    def load(self, cls, **kwargs):
+        return self.session.query(cls).filter_by(**kwargs).one()
 
     def store(self, object, commit=False):
         self.session.add(object)
@@ -45,8 +45,8 @@ class AsyncDb(object):
     session = None
 
     @defer_to_thread
-    def load(self, cls, id):
-        return self.session.query(cls).filter_by(id=id).one()
+    def load(self, cls, **kwargs):
+        return self.session.query(cls).filter_by(**kwargs).one()
 
     @defer_to_thread
     def store(self, object, commit=False):

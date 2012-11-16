@@ -10,7 +10,7 @@ LOG = logging.getLogger('FeedProcessorService')
 
 class FeedProcessorService(service.Service):
     def __init__(self):
-        app_context.install_default()
+        app_context.install_context(app_context.FeedProcessorConfig())
         self.feed_processor = app_context.AppContext.get_object('feed_processor')
 
     def startService(self):

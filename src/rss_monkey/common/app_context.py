@@ -74,19 +74,16 @@ class AppConfig(PythonConfig):
         Session = sessionmaker(bind=engine)
         return Session()
 
-    @Object(lazy_init=True)
-    def sync_db(self):
-        LOG.debug('Loading sync db from AppConfig')
-        from rss_monkey.db import SyncDb
-        db = SyncDb()
-        db.session = self.db_session()
-        return db
+
+class FeedProcessorConfig(AppConfig):
+    def __init__(self):
+        super(FeedProcessorConfig, self).__init__()
 
     @Object(lazy_init=True)
-    def async_db(self):
-        LOG.debug('Loading async db from AppConfig')
-        from rss_monkey.db import AsyncDb
-        db = AsyncDb()
+    def db(self):
+        LOG.debug('Loading sync db from AppConfig')
+        from rss_monkey.common.db import SyncDb
+        db = SyncDb()
         db.session = self.db_session()
         return db
 
@@ -105,6 +102,19 @@ class AppConfig(PythonConfig):
         return processor
 
 
-def install_default():
+class ServerServiceConfig(AppConfig):
+    def __init__(self):
+        super(ServerServiceConfig, self).__init__()
+
+    @Object(lazy_init=True)
+    def db(self):
+        LOG.debug('Loading async db from AppConfig')
+        from rss_monkey.common.db import AsyncDb
+        db = AsyncDb()
+        db.session = self.db_session()
+        return db
+
+
+def install_context(app_config):
     global AppContext
-    AppContext.install(ApplicationContext(AppConfig()))
+    AppContext.install(ApplicationContext(app_config))

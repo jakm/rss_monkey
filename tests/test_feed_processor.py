@@ -22,7 +22,7 @@ class ProcessFeedTest(unittest.TestCase):
 
         # prepare mock application context
         objects = {
-            'sync_db': lambda _: self.db,
+            'db': lambda _: self.db,
         }
         container = ContainerMock(objects)
         AppContext.install(container.get_context())

@@ -91,7 +91,7 @@ class FeedProcessor(object):
     task = None
 
     def __init__(self):
-        self.db = AppContext.get_object('sync_db')
+        self.db = AppContext.get_object('db')
 
     @log_function_call()
     def plan_jobs(self):

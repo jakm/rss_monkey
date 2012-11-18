@@ -13,7 +13,7 @@ def defer_to_thread(fnc):
     return wrapper
 
 
-def log_function_call(level=logging.INFO, log_params=True, log_result=True):
+def log_function_call(level=logging.DEBUG, log_params=True, log_result=True):
     log_function_call.lock = Lock()
     log_function_call.call_order = 0
 

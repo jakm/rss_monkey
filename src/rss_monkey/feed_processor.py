@@ -2,7 +2,10 @@
 
 import feedparser
 import logging
+
 from datetime import datetime
+from fastjsonrpc.server import JSONRPCServer
+from twisted.application import service
 from twisted.internet import defer, task, threads
 
 from rss_monkey.common.app_context import AppContext
@@ -94,9 +97,22 @@ class FeedProcessor(object):
         self.db = AppContext.get_object('db')
 
     @log_function_call()
-    def plan_jobs(self):
+    def schedule_jobs(self):
+        if self.task:
+            raise Exception('Task is planned') # TODO: konkretni vyjimka
+
         self.task = task.LoopingCall(self.process_feeds)
-        return self.task.start(self.download_interval, now=False)
+        return self._start_task()
+
+    @log_function_call()
+    def reschedule(self):
+        self.stop_jobs()
+        return self._start_task()
+
+    @log_function_call()
+    def stop_jobs(self):
+        if self.task and self.task.running:
+            self.task.stop()
 
     @log_function_call()
     def process_feeds(self):
@@ -109,6 +125,10 @@ class FeedProcessor(object):
             defers.append(d)
 
         return defer.DeferredList(defers)
+
+    @log_function_call()
+    def _start_task(self):
+        return self.task.start(self.download_interval)
 
     @log_function_call()
     def _get_feed_ids(self):
@@ -156,3 +176,27 @@ class FeedProcessor(object):
     @log_function_call()
     def errback(self, failure, feed_id):
         LOG.error('Can not download feed %d: %s', feed_id, failure.getErrorMessage())
+
+
+class FeedProcessorService(service.Service):
+    def __init__(self):
+        self.feed_processor = AppContext.get_object('feed_processor')
+
+    def startService(self):
+        LOG.info('Starting FeedProcessor')
+        service.Service.startService(self)
+        return self.feed_processor.schedule_jobs()
+
+    def stopService(self):
+        LOG.info('Stopping FeedProcessor')
+        self.feed_processor.stop_jobs()
+        service.Service.stopService(self)
+
+
+class FeedProcessorRpcServer(JSONRPCServer):
+    def __init__(self):
+        self.feed_processor = AppContext.get_object('feed_processor')
+
+    @log_function_call()
+    def jsonrpc_reload_feeds(self):
+        self.feed_processor.reschedule()

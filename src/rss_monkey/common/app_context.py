@@ -42,11 +42,13 @@ class AppConfig(PythonConfig):
         if filename == '' or filename == 'stdout':
             filename = None
 
-        logging.basicConfig(format=format, level=level, filename=filename)
+        # FIXME: fix logging configuration!!!
+        #logging.basicConfig(format=format, level=level, filename=filename)
+        logging.root.setLevel(level)
 
     @Object(lazy_init=True)
     def db_engine(self):
-        LOG.debug('Loading db engine from AppConfig')
+        LOG.debug('Loading db engine object')
         from sqlalchemy import create_engine
 
         host = self.config.get('database', 'host')
@@ -66,7 +68,7 @@ class AppConfig(PythonConfig):
 
     @Object(lazy_init=True)
     def db_session(self):
-        LOG.debug('Loading db session from AppConfig')
+        LOG.debug('Loading db session object')
         from sqlalchemy.orm import sessionmaker
 
         engine = self.db_engine()
@@ -81,7 +83,7 @@ class FeedProcessorConfig(AppConfig):
 
     @Object(lazy_init=True)
     def db(self):
-        LOG.debug('Loading sync db from AppConfig')
+        LOG.debug('Loading sync db object')
         from rss_monkey.common.db import SyncDb
         db = SyncDb()
         db.session = self.db_session()
@@ -89,7 +91,7 @@ class FeedProcessorConfig(AppConfig):
 
     @Object(lazy_init=True)
     def feed_processor(self):
-        LOG.debug('Loading feed_processor from AppConfig')
+        LOG.debug('Loading feed_processor object')
         from rss_monkey.feed_processor import FeedProcessor
         processor = FeedProcessor()
         processor.download_interval = self.config.getint('feed_processor', 'download_interval')
@@ -101,6 +103,31 @@ class FeedProcessorConfig(AppConfig):
 
         return processor
 
+    @Object(lazy_init=True)
+    def feed_processor_service(self):
+        LOG.debug('Loading feed_processor_service object')
+        from rss_monkey.feed_processor import FeedProcessorService
+        service = FeedProcessorService()
+
+        return service
+
+    @Object(lazy_init=True)
+    def feed_processor_rpc_server(self):
+        LOG.debug('Loading feed_processor_rpc_server object')
+        from twisted.application import internet
+        from twisted.web import server
+        from rss_monkey.feed_processor import FeedProcessorRpcServer
+
+        root = FeedProcessorRpcServer()
+        site = server.Site(root)
+
+        port = self.config.getint('feed_processor_rpc', 'port')
+
+        LOG.debug('Binding feed_processor_rpc_server with port %d', port)
+        server = internet.TCPServer(port, site)
+
+        return server
+
 
 class ServerServiceConfig(AppConfig):
     def __init__(self):
@@ -108,7 +135,7 @@ class ServerServiceConfig(AppConfig):
 
     @Object(lazy_init=True)
     def db(self):
-        LOG.debug('Loading async db from AppConfig')
+        LOG.debug('Loading async db object')
         from rss_monkey.common.db import AsyncDb
         db = AsyncDb()
         db.session = self.db_session()

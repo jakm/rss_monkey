@@ -8,22 +8,15 @@ from rss_monkey.common import app_context
 LOG = logging.getLogger('FeedProcessorService')
 
 
-class FeedProcessorService(service.Service):
-    def __init__(self):
-        app_context.install_context(app_context.FeedProcessorConfig())
-        self.feed_processor = app_context.AppContext.get_object('feed_processor')
+app_context.install_context(app_context.FeedProcessorConfig())
 
-    def startService(self):
-        LOG.info('Starting FeedProcessor')
-        service.Service.startService(self)
-        return self.feed_processor.plan_jobs()
+top_service = service.MultiService()
 
-    def stopService(self):
-        LOG.info('Stopping FeedProcessor')
-        self.feed_processor.task.stop()
-        service.Service.stopService(self)
+srv = app_context.AppContext.get_object('feed_processor_service')
+srv.setServiceParent(top_service)
 
+rpc = app_context.AppContext.get_object('feed_processor_rpc_server')
+rpc.setServiceParent(top_service)
 
-feed_processor_service = FeedProcessorService()
 application = service.Application('feed_processor')
-feed_processor_service.setServiceParent(application)
+top_service.setServiceParent(application)

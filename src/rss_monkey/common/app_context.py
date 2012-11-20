@@ -79,8 +79,8 @@ class AppConfig(PythonConfig):
     @Object(lazy_init=True)
     def db(self):
         LOG.debug('Loading sync db object')
-        from rss_monkey.common.db import SyncDb
-        db = SyncDb()
+        from rss_monkey.common.db import Db
+        db = Db()
         db.session = self.db_session()
         return db
 

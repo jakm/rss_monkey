@@ -7,7 +7,7 @@
 from twisted.trial import unittest
 
 from rss_monkey.common.app_context import AppContext
-from rss_monkey.common.db import SyncDb
+from rss_monkey.common.db import Db
 from rss_monkey.common.model import Feed
 from rss_monkey.feed_processor import FeedProcessor
 
@@ -18,7 +18,7 @@ class ProcessFeedTest(unittest.TestCase):
 
     def setUp(self):
         # prepare mock database object
-        self.db = DbMock(SyncDb, Feed.metadata)
+        self.db = DbMock(Db, Feed.metadata)
 
         # prepare mock application context
         objects = {

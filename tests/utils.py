@@ -54,7 +54,9 @@ def DbMock(db_class, metadata):
         return mock._db.store_all(object, commit)
     mock.store_all.side_effect = store_all
 
-    mock.query.side_effect = lambda entities: mock._db.query(entities) # TODO: mock pro query
+    def query(*entities, **kwargs):
+        return mock._db.query(*entities, **kwargs)
+    mock.query.side_effect = query # TODO: mock pro query
     mock.commit.side_effect = lambda: mock._db.commit()
     mock.rollback.side_effect = lambda: mock._db.rollback()
 

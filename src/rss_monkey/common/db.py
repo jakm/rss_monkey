@@ -23,8 +23,8 @@ class SyncDb(object):
             self._commit()
         return objects
 
-    def query(self, entities):
-        return self.session.query(entities)
+    def query(self, *entities, **kwargs):
+        return self.session.query(*entities, **kwargs)
 
     def commit(self):
         self._commit()
@@ -63,7 +63,7 @@ class AsyncDb(object):
         return objects
 
     # this method is sychronous, because returns asynchronous query object
-    def query(self, entities):
+    def query(self, *entities, **kwargs):
         return AsyncQuery(entities, self.session)
 
     @defer_to_thread

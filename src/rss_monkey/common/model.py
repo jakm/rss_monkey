@@ -2,7 +2,8 @@
 
 import logging
 
-from sqlalchemy import ForeignKey, Column, Integer, String, DateTime, Table
+from sqlalchemy import (ForeignKey, Column, Boolean, Integer,
+                        String, DateTime, Table)
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -46,6 +47,7 @@ class FeedEntry(Base):
     summary = Column(String(1024))
     link = Column(String(255))
     date = Column(DateTime)
+    viewed = Column(Boolean)
 
 
 user_feed_table = Table('user_feed', Base.metadata,

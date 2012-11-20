@@ -76,11 +76,6 @@ class AppConfig(PythonConfig):
         Session = sessionmaker(bind=engine)
         return Session()
 
-
-class FeedProcessorConfig(AppConfig):
-    def __init__(self):
-        super(FeedProcessorConfig, self).__init__()
-
     @Object(lazy_init=True)
     def db(self):
         LOG.debug('Loading sync db object')
@@ -88,6 +83,11 @@ class FeedProcessorConfig(AppConfig):
         db = SyncDb()
         db.session = self.db_session()
         return db
+
+
+class FeedProcessorConfig(AppConfig):
+    def __init__(self):
+        super(FeedProcessorConfig, self).__init__()
 
     @Object(lazy_init=True)
     def feed_processor(self):
@@ -132,14 +132,6 @@ class FeedProcessorConfig(AppConfig):
 class ServerServiceConfig(AppConfig):
     def __init__(self):
         super(ServerServiceConfig, self).__init__()
-
-    @Object(lazy_init=True)
-    def db(self):
-        LOG.debug('Loading async db object')
-        from rss_monkey.common.db import AsyncDb
-        db = AsyncDb()
-        db.session = self.db_session()
-        return db
 
 
 def install_context(app_config):

@@ -47,10 +47,9 @@ class FeedEntry(Base):
     summary = Column(String(1024))
     link = Column(String(255))
     date = Column(DateTime)
-    viewed = Column(Boolean)
 
 
-user_feed_table = Table('user_feed', Base.metadata,
+user_feeds_table = Table('user_feeds', Base.metadata,
     Column('user_id', Integer, ForeignKey('users.id'), primary_key=True),
     Column('feed_id', Integer, ForeignKey('feeds.id'), primary_key=True),
     Column('order', Integer)
@@ -65,7 +64,7 @@ class User(Base):
     passwd = Column(String(64), nullable=False)
 
     feeds = relationship('Feed',
-                secondary=user_feed_table,
+                secondary=user_feeds_table,
                 backref='users',
                 order_by='user_feed.c.order',
                 primaryjoin='User.id == user_feed.c.user_id',

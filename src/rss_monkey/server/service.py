@@ -1,6 +1,7 @@
 #-*- coding: utf8 -*-
 
 import logging
+from zope.interface import Interface, implements
 
 from rss_monkey.common.app_context import AppContext
 from rss_monkey.common.model import (User, Feed, FeedEntry, user_feeds_table,
@@ -19,11 +20,11 @@ class LoginService(object):
         # TODO: vygeneruje nejaky klic, ulozi do db a vrati zpet
 
 
-class RssService(object):
-    def __init__(self):
-        self.db = AppContext.get_object('db')
+class IRssService(Interface):
+    """
+    Interface of essential service to control user's channels and entries.
+    """
 
-    @log_function_call()
     def get_channels(self, user_id):
         """
         Retrieves channels registered by user. Records are in format:
@@ -32,11 +33,7 @@ class RssService(object):
         @param user_id int, User ID
         @return tuple, Tuple of records
         """
-        user = self.db.load(User, id=user_id)
-        return tuple([{'id': feed.id, 'title': feed.title, 'url': feed.url}
-            for feed in user.feeds])
 
-    @log_function_call()
     def reorder_channels(self, user_id, new_order):
         """
         Changes ordering of user's channels.
@@ -45,6 +42,68 @@ class RssService(object):
         @param new_order sequence, Sequence of channel IDs in order
         """
 
+    def add_channel(self, user_id, url):
+        """
+        Binds user with channel. If channel doesn't exist create new record.
+
+        @param user_id int, User ID
+        @param url str, URL of channel
+        """
+
+    def remove_channel(self, user_id, channel_id):
+        """
+        Unbinds user with channel. If channel is not bound with any user remove it.
+
+        @param user_id int, User ID
+        @param channel_id int, Channel ID
+        """
+
+    def has_unread_entries(self, user_id, channel_id):
+        """
+        True if channel has unread entries or False.
+
+        @param user_id int, User ID
+        @param channel_id int, Channel ID
+        @return bool
+        """
+
+    def get_entries(self, user_id, channel_id, limit=None, offset=None):
+        """
+        Returns entries with any read status. Records are in format:
+        {'id', int, 'title': str, 'summary': str, 'link': str, 'date':
+         datetime.datetime, 'read': bool}
+
+        @param user_id int, User ID
+        @param channel_id int, Channel ID
+        @param limit int, Maximal number of returned records or None for unlimited
+        @param offset int, Number of records to skip
+        @return tuple, Tuple of records
+        """
+
+    def set_entry_read(self, user_id, entry_id, read):
+        """
+        Set read status of entry.
+
+        @param user_id int, User ID
+        @param entry_id int, Entry ID
+        @param read bool, Read status of entry
+        """
+
+
+class RssService(object):
+    implements(IRssService)
+
+    def __init__(self):
+        self.db = AppContext.get_object('db')
+
+    @log_function_call()
+    def get_channels(self, user_id):
+        user = self.db.load(User, id=user_id)
+        return tuple([{'id': feed.id, 'title': feed.title, 'url': feed.url}
+            for feed in user.feeds])
+
+    @log_function_call()
+    def reorder_channels(self, user_id, new_order):
         feeds = (self.db.query(user_feeds_table.c.feed_id)
                        .filter(user_feeds_table.c.user_id == user_id)
                        .all())
@@ -70,12 +129,6 @@ class RssService(object):
 
     @log_function_call()
     def add_channel(self, user_id, url):
-        """
-        Binds user with channel. If channel doesn't exist create new record.
-
-        @param user_id int, User ID
-        @param url str, URL of channel
-        """
         user = self.db.load(User, id=user_id)
         feed = Feed(url=url)
         user.feeds.append(feed)
@@ -83,12 +136,6 @@ class RssService(object):
 
     @log_function_call()
     def remove_channel(self, user_id, channel_id):
-        """
-        Unbinds user with channel. If channel is not bound with any user remove it.
-
-        @param user_id int, User ID
-        @param channel_id int, Channel ID
-        """
         user = self.db.load(User, id=user_id)
         for feed in user.feeds:
             if feed.id == channel_id:
@@ -98,54 +145,18 @@ class RssService(object):
 
     @log_function_call()
     def has_unread_entries(self, user_id, channel_id):
-        """
-        True if channel has unread entries or False.
-
-        @param user_id int, User ID
-        @param channel_id int, Channel ID
-        @return bool
-        """
         return len(self.get_unread_entries(user_id, channel_id)) > 0
 
     @log_function_call()
     def get_unread_entries(self, user_id, channel_id, limit=None, offset=None):
-        """
-        Returns entries that are marked as unread. Records are in format:
-        {'id', int, 'title': str, 'summary': str, 'link': str, 'date':
-         datetime.datetime, 'read': False}
-
-        @param user_id int, User ID
-        @param channel_id int, Channel ID
-        @param limit int, Maximal number of returned records or None
-        @param offset int, Number of records to skip or None
-        @return tuple, Tuple of records
-        """
         return self._get_entries(user_id, channel_id, read=False, limit=limit, offset=offset)
 
     @log_function_call()
     def get_entries(self, user_id, channel_id, limit=None, offset=None):
-        """
-        Returns entries with any read status. Records are in format:
-        {'id', int, 'title': str, 'summary': str, 'link': str, 'date':
-         datetime.datetime, 'read': bool}
-
-        @param user_id int, User ID
-        @param channel_id int, Channel ID
-        @param limit int, Maximal number of returned records or None for unlimited
-        @param offset int, Number of records to skip
-        @return tuple, Tuple of records
-        """
         return self._get_entries(user_id, channel_id, limit=limit, offset=offset)
 
     @log_function_call()
     def set_entry_read(self, user_id, entry_id, read):
-        """
-        Set read status of entry.
-
-        @param user_id int, User ID
-        @param entry_id int, Entry ID
-        @param read bool, Read status of entry
-        """
         user = self.db.load(User, id=user_id)
         entry = user.get_users_entry(entry_id)
         user.set_entry_read(entry, read)

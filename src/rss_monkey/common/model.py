@@ -93,12 +93,21 @@ class User(Base):
 
         return q.all()
 
+    def get_users_entry(self, entry_id):
+        entry = (Session.object_session(self)
+                        .query(FeedEntry)
+                        .filter(FeedEntry.id == user_entries_table.c.entry_id,
+                                user_entries_table.c.user_id == self.id,
+                                user_entries_table.c.entry_id == entry_id)
+                        .one())
+        return entry
+
     def is_entry_read(self, entry):
         is_read = (Session.object_session(self)
-                .query(user_entries_table.c.read)
-                .filter(user_entries_table.c.user_id == self.id,
-                        user_entries_table.c.entry_id == entry.id)
-                .as_scalar())
+                          .query(user_entries_table.c.read)
+                          .filter(user_entries_table.c.user_id == self.id,
+                                  user_entries_table.c.entry_id == entry.id)
+                          .as_scalar())
         return bool(is_read)
 
     def set_entry_read(self, entry, read):

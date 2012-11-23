@@ -1,0 +1,211 @@
+#-*- coding: utf8 -*-
+
+import logging
+
+from rss_monkey.common.app_context import AppContext
+from rss_monkey.common.model import (User, Feed, FeedEntry, user_feeds_table,
+                                     user_entries_table)
+from rss_monkey.common.utils import defer_to_thread, log_function_call
+
+logging.basicConfig()
+LOG = logging.getLogger(__name__)
+
+# TODO: pro dynamicky export jsonrpc metod by slo docela uspesne vyuzit interface
+
+
+class LoginService(object):
+    def login(self, login, passwd):
+        pass
+        # TODO: vygeneruje nejaky klic, ulozi do db a vrati zpet
+
+
+class RssService(object):
+    def __init__(self):
+        self.db = AppContext.get_object('db')
+
+    @log_function_call()
+    @defer_to_thread
+    def get_channels(self, user_id):
+        """
+        Retrieves channels registered by user. Records are in format:
+        {'id': int, 'title': str, 'url': str}
+
+        Warning! Method is wrapped with defer_to_thread by default.
+
+        @param user_id int, User ID
+        @return tuple, Tuple of records
+        """
+        user = self.db.load(User, id=user_id)
+        return tuple([{'id': feed.id, 'title': feed.title, 'url': feed.url}
+            for feed in user.feeds])
+
+    @log_function_call()
+    @defer_to_thread
+    def reorder_channels(self, user_id, new_order):
+        """
+        Changes ordering of user's channels.
+
+        Warning! Method is wrapped with defer_to_thread by default.
+
+        @param user_id int, User ID
+        @param new_order sequence, Sequence of channel IDs in order
+        """
+
+        feeds = (self.db.query(user_feeds_table.c.feed_id)
+                       .filter(user_feeds_table.c.user_id == user_id)
+                       .all())
+        try:
+            for feed_id in (f[0] for f in feeds):
+                order = None
+                try:
+                    order = new_order.index(feed_id)
+                except ValueError:
+                    pass
+
+                self.db.execute(
+                    user_feeds_table.update()
+                        .where(user_feeds_table.c.feed_id == feed_id)
+                        .where(user_feeds_table.c.user_id == user_id)
+                        .values({user_feeds_table.c.order: order})
+                )
+        except:
+            self.db.rollback()
+            raise
+        else:
+            self.db.commit()
+
+    @log_function_call()
+    @defer_to_thread
+    def add_channel(self, user_id, url):
+        """
+        Binds user with channel. If channel doesn't exist create new record.
+
+        Warning! Method is wrapped with defer_to_thread by default.
+
+        @param user_id int, User ID
+        @param url str, URL of channel
+        """
+        user = self.db.load(User, id=user_id)
+        feed = Feed(url=url)
+        user.feeds.append(feed)
+        self.db.commit()
+
+    @log_function_call()
+    @defer_to_thread
+    def remove_channel(self, user_id, channel_id):
+        """
+        Unbinds user with channel. If channel is not bound with any user remove it.
+
+        Warning! Method is wrapped with defer_to_thread by default.
+
+        @param user_id int, User ID
+        @param channel_id int, Channel ID
+        """
+        user = self.db.load(User, id=user_id)
+        for feed in user.feeds:
+            if feed.id == channel_id:
+                user.feeds.remove()
+                self.db.commit()
+                break
+
+    @log_function_call()
+    @defer_to_thread
+    def has_unread_entries(self, user_id, channel_id):
+        """
+        True if channel has unread entries or False.
+
+        Warning! Method is wrapped with defer_to_thread by default.
+
+        @param user_id int, User ID
+        @param channel_id int, Channel ID
+        @return bool
+        """
+        return len(self.get_unread_entries(user_id, channel_id)) > 0
+
+    @log_function_call()
+    @defer_to_thread
+    def get_unread_entries(self, user_id, channel_id, limit=None, offset=None):
+        """
+        Returns entries that are marked as unread. Records are in format:
+        {'id', int, 'title': str, 'summary': str, 'link': str, 'date':
+         datetime.datetime, 'read': False}
+
+        Warning! Method is wrapped with defer_to_thread by default.
+
+        @param user_id int, User ID
+        @param channel_id int, Channel ID
+        @param limit int, Maximal number of returned records or None
+        @param offset int, Number of records to skip or None
+        @return tuple, Tuple of records
+        """
+        return self._get_entries(self, user_id, channel_id, read=False, limit=limit, offset=offset)
+
+    @log_function_call()
+    @defer_to_thread
+    def get_entries(self, user_id, channel_id, limit=None, offset=None):
+        """
+        Returns entries with any read status. Records are in format:
+        {'id', int, 'title': str, 'summary': str, 'link': str, 'date':
+         datetime.datetime, 'read': bool}
+
+        Warning! Method is wrapped with defer_to_thread by default.
+
+        @param user_id int, User ID
+        @param channel_id int, Channel ID
+        @param limit int, Maximal number of returned records or None for unlimited
+        @param offset int, Number of records to skip
+        @return tuple, Tuple of records
+        """
+        return self._get_entries(self, user_id, channel_id, limit=limit, offset=offset)
+
+    @log_function_call()
+    @defer_to_thread
+    def set_entry_read(self, user_id, entry_id, read):
+        """
+        Set read status of entry.
+
+        Warning! Method is wrapped with defer_to_thread by default.
+
+        @param user_id int, User ID
+        @param entry_id int, Entry ID
+        @param read bool, Read status of entry
+        """
+        user = self.db.load(User, id=user_id)
+        entry = user.get_users_entry(entry_id)
+        user.set_entry_read(entry, read)
+
+    def _get_entries(self, user_id, channel_id, read=None, limit=None, offset=None):
+        user = self.db.load(User, id=user_id)
+        feed = [f for f in user.feeds if f.id == channel_id]
+        if len(feed) == 0:
+            return tuple()
+
+        if limit is None and offset is None:
+            entries = user.get_users_entries(feed=feed, read=read)
+        else:
+            q = (self.db.query(FeedEntry)
+                        .filter(FeedEntry.id == user_entries_table.c.entry_id,
+                                user_entries_table.c.user_id == user.id,
+                                user_entries_table.c.feed_id == feed.id))
+            if read is not None:
+                q = q.filter(user_entries_table.c.read == read)
+            if limit is not None:
+                q = q.limit(limit)
+            if offset is not None:
+                q = q.offset(offset)
+
+            entries = q.all()
+
+        get_read = lambda e: read \
+                   if read is not None else \
+                   lambda e: user.is_entry_read(e)
+
+        result = []
+        for entry in entries:
+            record = {'id': entry.id, 'title': entry.title,
+                     'summary': entry.summary, 'link': entry.link,
+                     'date': entry.date, 'read': get_read(entry)}
+
+            result.append(record)
+
+        return tuple(result)

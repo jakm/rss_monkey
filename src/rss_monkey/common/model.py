@@ -62,7 +62,7 @@ user_entries_table = Table('user_entries', Base.metadata,
     Column('user_id', Integer, ForeignKey('users.id'), primary_key=True),
     Column('feed_id', Integer, ForeignKey('feeds.id'), primary_key=True),
     Column('entry_id', Integer, ForeignKey('feed_entries.id'), primary_key=True),
-    Column('read', Boolean, default=False)
+    Column('read', Boolean, server_default='0')
 )
 
 

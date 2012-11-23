@@ -5,7 +5,7 @@ import logging
 from rss_monkey.common.app_context import AppContext
 from rss_monkey.common.model import (User, Feed, FeedEntry, user_feeds_table,
                                      user_entries_table)
-from rss_monkey.common.utils import defer_to_thread, log_function_call
+from rss_monkey.common.utils import log_function_call
 
 logging.basicConfig()
 LOG = logging.getLogger(__name__)
@@ -24,13 +24,10 @@ class RssService(object):
         self.db = AppContext.get_object('db')
 
     @log_function_call()
-    @defer_to_thread
     def get_channels(self, user_id):
         """
         Retrieves channels registered by user. Records are in format:
         {'id': int, 'title': str, 'url': str}
-
-        Warning! Method is wrapped with defer_to_thread by default.
 
         @param user_id int, User ID
         @return tuple, Tuple of records
@@ -40,12 +37,9 @@ class RssService(object):
             for feed in user.feeds])
 
     @log_function_call()
-    @defer_to_thread
     def reorder_channels(self, user_id, new_order):
         """
         Changes ordering of user's channels.
-
-        Warning! Method is wrapped with defer_to_thread by default.
 
         @param user_id int, User ID
         @param new_order sequence, Sequence of channel IDs in order
@@ -75,12 +69,9 @@ class RssService(object):
             self.db.commit()
 
     @log_function_call()
-    @defer_to_thread
     def add_channel(self, user_id, url):
         """
         Binds user with channel. If channel doesn't exist create new record.
-
-        Warning! Method is wrapped with defer_to_thread by default.
 
         @param user_id int, User ID
         @param url str, URL of channel
@@ -91,12 +82,9 @@ class RssService(object):
         self.db.commit()
 
     @log_function_call()
-    @defer_to_thread
     def remove_channel(self, user_id, channel_id):
         """
         Unbinds user with channel. If channel is not bound with any user remove it.
-
-        Warning! Method is wrapped with defer_to_thread by default.
 
         @param user_id int, User ID
         @param channel_id int, Channel ID
@@ -104,17 +92,14 @@ class RssService(object):
         user = self.db.load(User, id=user_id)
         for feed in user.feeds:
             if feed.id == channel_id:
-                user.feeds.remove()
+                user.feeds.remove(feed)
                 self.db.commit()
                 break
 
     @log_function_call()
-    @defer_to_thread
     def has_unread_entries(self, user_id, channel_id):
         """
         True if channel has unread entries or False.
-
-        Warning! Method is wrapped with defer_to_thread by default.
 
         @param user_id int, User ID
         @param channel_id int, Channel ID
@@ -123,14 +108,11 @@ class RssService(object):
         return len(self.get_unread_entries(user_id, channel_id)) > 0
 
     @log_function_call()
-    @defer_to_thread
     def get_unread_entries(self, user_id, channel_id, limit=None, offset=None):
         """
         Returns entries that are marked as unread. Records are in format:
         {'id', int, 'title': str, 'summary': str, 'link': str, 'date':
          datetime.datetime, 'read': False}
-
-        Warning! Method is wrapped with defer_to_thread by default.
 
         @param user_id int, User ID
         @param channel_id int, Channel ID
@@ -138,17 +120,14 @@ class RssService(object):
         @param offset int, Number of records to skip or None
         @return tuple, Tuple of records
         """
-        return self._get_entries(self, user_id, channel_id, read=False, limit=limit, offset=offset)
+        return self._get_entries(user_id, channel_id, read=False, limit=limit, offset=offset)
 
     @log_function_call()
-    @defer_to_thread
     def get_entries(self, user_id, channel_id, limit=None, offset=None):
         """
         Returns entries with any read status. Records are in format:
         {'id', int, 'title': str, 'summary': str, 'link': str, 'date':
          datetime.datetime, 'read': bool}
-
-        Warning! Method is wrapped with defer_to_thread by default.
 
         @param user_id int, User ID
         @param channel_id int, Channel ID
@@ -156,15 +135,12 @@ class RssService(object):
         @param offset int, Number of records to skip
         @return tuple, Tuple of records
         """
-        return self._get_entries(self, user_id, channel_id, limit=limit, offset=offset)
+        return self._get_entries(user_id, channel_id, limit=limit, offset=offset)
 
     @log_function_call()
-    @defer_to_thread
     def set_entry_read(self, user_id, entry_id, read):
         """
         Set read status of entry.
-
-        Warning! Method is wrapped with defer_to_thread by default.
 
         @param user_id int, User ID
         @param entry_id int, Entry ID
@@ -176,9 +152,10 @@ class RssService(object):
 
     def _get_entries(self, user_id, channel_id, read=None, limit=None, offset=None):
         user = self.db.load(User, id=user_id)
-        feed = [f for f in user.feeds if f.id == channel_id]
-        if len(feed) == 0:
-            return tuple()
+        try:
+            feed = [f for f in user.feeds if f.id == channel_id][0]
+        except IndexError:
+            return ()
 
         if limit is None and offset is None:
             entries = user.get_users_entries(feed=feed, read=read)

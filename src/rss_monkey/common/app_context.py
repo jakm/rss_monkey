@@ -135,15 +135,32 @@ class FeedProcessorConfig(AppConfig):
         return server
 
 
-class ServerServiceConfig(AppConfig):
+class RssMonkeyServerConfig(AppConfig):
     def __init__(self):
-        super(ServerServiceConfig, self).__init__()
+        super(RssMonkeyServerConfig, self).__init__()
 
     @Object(lazy_init=True)
     def rss_service(self):
         LOG.debug('Loading rss_service object')
         from rss_monkey.server.service import RssService
         return RssService()
+
+    @Object(lazy_init=True)
+    def web_api(self):
+        LOG.debug('Loading web_api object')
+        from twisted.application import internet
+        from twisted.web import server
+        from rss_monkey.server.web_api import WebApi
+
+        root = WebApi()
+        site = server.Site(root)
+
+        port = self.config.getint('web_api', 'port')
+
+        LOG.debug('Binding web_api server with port %d', port)
+        server = internet.TCPServer(port, site)
+
+        return server
 
 
 def install_context(app_config):

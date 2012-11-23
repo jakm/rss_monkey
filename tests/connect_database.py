@@ -24,7 +24,7 @@ prepare_import()
 del get_project_root
 del prepare_import
 
-from rss_monkey.common.app_context import install_context, AppContext, ServerServiceConfig
-install_context(ServerServiceConfig())
+from rss_monkey.common.app_context import install_context, AppContext, RssMonkeyServerConfig
+install_context(RssMonkeyServerConfig())
 db = AppContext.get_object('db')
 from rss_monkey.common.model import User, Feed, FeedEntry

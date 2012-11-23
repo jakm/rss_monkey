@@ -139,6 +139,12 @@ class ServerServiceConfig(AppConfig):
     def __init__(self):
         super(ServerServiceConfig, self).__init__()
 
+    @Object(lazy_init=True)
+    def rss_service(self):
+        LOG.debug('Loading rss_service object')
+        from rss_monkey.server.service import RssService
+        return RssService()
+
 
 def install_context(app_config):
     global AppContext

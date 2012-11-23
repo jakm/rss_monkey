@@ -37,7 +37,7 @@ class IRssService(Interface):
         Changes ordering of user's channels.
 
         @param user_id int, User ID
-        @param new_order sequence, Sequence of channel IDs in order
+        @param new_order sequence, Sequence of ordered channel IDs
         """
 
     def add_channel(self, user_id, url):
@@ -105,6 +105,10 @@ class RssService(object):
         feeds = (self.db.query(user_feeds_table.c.feed_id)
                        .filter(user_feeds_table.c.user_id == user_id)
                        .all())
+
+        if not feeds:
+            return
+
         try:
             for feed_id in (f[0] for f in feeds):
                 order = None

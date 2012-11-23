@@ -11,8 +11,6 @@ from rss_monkey.common.utils import log_function_call
 logging.basicConfig()
 LOG = logging.getLogger(__name__)
 
-# TODO: pro dynamicky export jsonrpc metod by slo docela uspesne vyuzit interface
-
 
 class LoginService(object):
     def login(self, login, passwd):

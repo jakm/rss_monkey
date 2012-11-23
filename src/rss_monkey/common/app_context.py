@@ -56,13 +56,19 @@ class AppConfig(PythonConfig):
         passwd = self.config.get('database', 'passwd')
         db = self.config.get('database', 'db')
         pool_size = self.config.getint('database', 'pool_size')
+        debug = self.config.getboolean('database', 'debug')
 
         LOG.debug('Database: host=%s, user=%s, passwd=***, db=%s, pool_size=%d',
             host,  user, passwd, db, pool_size)
 
         connection_string = 'mysql://%s:%s@%s/%s?charset=utf8' % (
             user, passwd, host, db)
-        kwargs = {'pool_size': pool_size} if pool_size >= 0 else {}
+
+        kwargs = {}
+        if pool_size >= 0:
+            kwargs['pool_size'] = pool_size
+        if debug:
+            kwargs['echo'] = True
 
         return create_engine(connection_string, **kwargs)
 

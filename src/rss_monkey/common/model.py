@@ -5,6 +5,7 @@ import logging
 from sqlalchemy import (ForeignKey, Column, Boolean, Integer,
                         String, DateTime, Table)
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm.session import Session
 from sqlalchemy.ext.declarative import declarative_base
 
 logging.basicConfig()
@@ -56,6 +57,15 @@ user_feeds_table = Table('user_feeds', Base.metadata,
 )
 
 
+user_entries_table = Table('user_entries', Base.metadata,
+    # TODO: nadefinovat kaskadu
+    Column('user_id', Integer, ForeignKey('users.id'), primary_key=True),
+    Column('feed_id', Integer, ForeignKey('feeds.id'), primary_key=True),
+    Column('entry_id', Integer, ForeignKey('feed_entries.id'), primary_key=True),
+    Column('read', Boolean, default=False)
+)
+
+
 class User(Base):
     __tablename__ = 'users'
 
@@ -66,7 +76,27 @@ class User(Base):
     feeds = relationship('Feed',
                 secondary=user_feeds_table,
                 backref='users',
-                order_by='user_feed.c.order',
-                primaryjoin='User.id == user_feed.c.user_id',
-                secondaryjoin='Feed.id == user_feed.c.feed_id')
+                order_by='user_feeds.c.order',
+                primaryjoin='User.id == user_feeds.c.user_id',
+                secondaryjoin='Feed.id == user_feeds.c.feed_id')
                 #cascade='all, delete, delete-orphan') # TODO: delete-orphan neni podporovan na many-to-many vztazich!!!
+
+    def get_users_entries(self, feed=None, read=None):
+        q = (Session.object_session(self)
+                .query(FeedEntry)
+                .filter(FeedEntry.id == user_entries_table.c.entry_id,
+                        user_entries_table.c.user_id == self.id))
+        if feed is not None:
+            q = q.filter(user_entries_table.c.feed_id == feed.id)
+        if read is not None:
+            q = q.filter(user_entries_table.c.read == read)
+
+        return q.all()
+
+    def is_entry_read(self, entry):
+        is_read = (Session.object_session(self)
+                .query(user_entries_table.c.read)
+                .filter(user_entries_table.c.user_id == self.id,
+                        user_entries_table.c.entry_id == entry.id)
+                .as_scalar())
+        return bool(is_read)

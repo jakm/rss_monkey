@@ -24,6 +24,9 @@ class Db(object):
     def query(self, *entities, **kwargs):
         return self.session.query(*entities, **kwargs)
 
+    def execute(self, clause, params=None, mapper=None, bind=None, **kw):
+        return self.session.execute(clause, params, mapper, bind, **kw)
+
     def commit(self):
         self._commit()
 

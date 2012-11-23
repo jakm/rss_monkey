@@ -27,28 +27,29 @@ def main():
         if answer != 'yes':
             exit()
 
-    connect_and_execute(options.force)
+    prepare_import()
+    engine = connect()
+    create_tables(engine, options.force)
 
 
-def connect_and_execute(force=False):
-    sys.path.insert(0, get_src_dir())
+def prepare_import():
+    src_dir = os.path.join(get_project_root(), 'src')
+    sys.path.insert(0, src_dir)
 
+
+def connect():
     from rss_monkey.common import app_context
-    from rss_monkey.common.model import Base
-
     app_context.install_context(app_context.AppConfig())
+    return app_context.AppContext.get_object('db_engine')
 
-    engine = app_context.AppContext.get_object('db_engine')
+
+def create_tables(engine, force=False):
+    from rss_monkey.common.model import Base
 
     if force:
         Base.metadata.drop_all(bind=engine)
 
     Base.metadata.create_all(bind=engine)
-
-
-def get_src_dir():
-    root = get_project_root()
-    return os.path.join(root, 'src')
 
 
 def get_project_root():

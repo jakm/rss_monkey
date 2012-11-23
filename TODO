@@ -1,1 +1,2 @@
 TODO: pridat globalni konfiguraci logeru
+TODO: po odebrani feedu posl. uzivateli zustane v db, stejne polozky - bud spravne nastavit kaskady, nebo pridat trigger

@@ -100,3 +100,11 @@ class User(Base):
                         user_entries_table.c.entry_id == entry.id)
                 .as_scalar())
         return bool(is_read)
+
+    def set_entry_read(self, entry, read):
+        Session.object_session(self).execute(
+            user_entries_table.update()
+                .where(user_entries_table.c.user_id == self.id)
+                .where(user_entries_table.c.entry_id == entry.id)
+                .values({user_entries_table.c.read: read})
+        )

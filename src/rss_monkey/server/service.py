@@ -204,7 +204,6 @@ class RssService(object):
             record = {'id': entry.id, 'title': entry.title,
                      'summary': entry.summary, 'link': entry.link,
                      'date': str(entry.date), 'read': get_read(entry)}
-            print record
 
             result.append(record)
 

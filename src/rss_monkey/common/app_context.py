@@ -90,11 +90,6 @@ class AppConfig(PythonConfig):
         db.session = self.db_session()
         return db
 
-
-class FeedProcessorConfig(AppConfig):
-    def __init__(self):
-        super(FeedProcessorConfig, self).__init__()
-
     @Object(lazy_init=True)
     def feed_processor(self):
         LOG.debug('Loading feed_processor object')
@@ -123,8 +118,8 @@ class FeedProcessorConfig(AppConfig):
         return service
 
     @Object(lazy_init=True)
-    def feed_processor_rpc_server(self):
-        LOG.debug('Loading feed_processor_rpc_server object')
+    def feed_processor_rpc_service(self):
+        LOG.debug('Loading feed_processor_rpc_service object')
         from twisted.application import internet
         from twisted.web import server
         from rss_monkey.feed_processor import FeedProcessorRpcServer
@@ -141,11 +136,6 @@ class FeedProcessorConfig(AppConfig):
 
         return server
 
-
-class RssMonkeyServerConfig(AppConfig):
-    def __init__(self):
-        super(RssMonkeyServerConfig, self).__init__()
-
     @Object(lazy_init=True)
     def rss_service(self):
         LOG.debug('Loading rss_service object')
@@ -157,7 +147,7 @@ class RssMonkeyServerConfig(AppConfig):
         return service
 
     @Object(lazy_init=True)
-    def web_api(self):
+    def web_api_service(self):
         LOG.debug('Loading web_api object')
         from twisted.application import internet
         from twisted.web import server

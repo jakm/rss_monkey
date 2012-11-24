@@ -20,9 +20,9 @@ class WebApi(JSONRPCServer):
 
         self.service_methods = {}
 
-        self._extendWithServiceMethods()
+        self._extend_with_service_methods()
 
-    def _extendWithServiceMethods(self):
+    def _extend_with_service_methods(self):
         method_names = [name for name in list(IRssService)
                         if isinstance(IRssService.get(name), interface.Method)]
 
@@ -36,6 +36,7 @@ class WebApi(JSONRPCServer):
 
             def wrapped(self, *args, **kw):
                 return wrapper(method_name, *args, **kw)
+            wrapped.__name__ = method_name
 
             return wrapped
 
@@ -45,8 +46,13 @@ class WebApi(JSONRPCServer):
 
             method = wrap_method(method_name)
 
-            self._addMethod(method, 'jsonrpc_' + method_name)
+            method.__doc__ = 'Warning! Method wrapper returns deferred!\n'
+            doc = IRssService.get(method_name).getDoc()
+            if doc:
+                method.__doc__ += doc
 
-    def _addMethod(self, func, method_name):
+            self._add_method(method, 'jsonrpc_' + method_name)
+
+    def _add_method(self, func, method_name):
         method = new.instancemethod(func, self, self.__class__)
         setattr(self, method_name, method)

@@ -12,7 +12,7 @@ from rss_monkey.server.service import IRssService
 class WebApi(JSONRPCServer):
     def __init__(self):
         """
-        Creates new service and register its methods for RPC.
+        Create new service and register its methods for RPC.
         """
         self.service = AppContext.get_object('rss_service')
         if not IRssService.providedBy(self.service):

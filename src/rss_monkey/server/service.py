@@ -25,7 +25,7 @@ class IRssService(Interface):
 
     def get_channels(self, user_id):
         """
-        Retrieves channels registered by user. Records are in format:
+        Retrieve channels registered by user. Records are in format:
         {'id': int, 'title': str, 'url': str}
 
         @param user_id int, User ID
@@ -34,7 +34,7 @@ class IRssService(Interface):
 
     def reorder_channels(self, user_id, new_order):
         """
-        Changes ordering of user's channels.
+        Change ordering of user's channels.
 
         @param user_id int, User ID
         @param new_order sequence, Sequence of ordered channel IDs
@@ -42,7 +42,7 @@ class IRssService(Interface):
 
     def add_channel(self, user_id, url):
         """
-        Binds user with channel. If channel doesn't exist create new record.
+        Bind user with channel. If channel doesn't exist create new record.
 
         @param user_id int, User ID
         @param url str, URL of channel
@@ -50,7 +50,7 @@ class IRssService(Interface):
 
     def remove_channel(self, user_id, channel_id):
         """
-        Unbinds user with channel. If channel is not bound with any user remove it.
+        Unbind user with channel. If channel is not bound with any user remove it.
 
         @param user_id int, User ID
         @param channel_id int, Channel ID
@@ -67,7 +67,7 @@ class IRssService(Interface):
 
     def get_entries(self, user_id, channel_id, limit=None, offset=None):
         """
-        Returns entries with any read status. Records are in format:
+        Return entries with any read status. Records are in format:
         {'id', int, 'title': str, 'summary': str, 'link': str, 'date':
          datetime.datetime, 'read': bool}
 

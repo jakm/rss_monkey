@@ -1,3 +1,3 @@
+TODO: trigger, ktery prida existujici polozky uzivateli pri pridani feedu
 TODO: pridat globalni konfiguraci logeru
 TODO: testy pro service
-TODO: po odebrani feedu posl. uzivateli zustane v db, stejne polozky - bud spravne nastavit kaskady, nebo pridat trigger

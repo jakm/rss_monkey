@@ -3,7 +3,7 @@
 import logging
 
 from sqlalchemy import (ForeignKey, Column, Boolean, Integer,
-                        String, DateTime, Table)
+                        String, DateTime, Table, func)
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.session import Session
 from sqlalchemy.ext.declarative import declarative_base
@@ -30,9 +30,17 @@ class Feed(Base):
 
     def add_entry(self, entry):
         """
-        Warning! This method uses synchronous query!
+        Check if entry doesn't exist and add it to feed. Entry is searched
+        by its link.
+
+        @param entry FeedEntry, Entry to add
         """
-        if entry in self.entries:
+        count = (Session.object_session(self)
+                        .query(func.count(FeedEntry.id))
+                        .filter(FeedEntry.link == entry.link)
+                        .one())[0]
+
+        if count > 0:
             return
 
         self.entries.append(entry)

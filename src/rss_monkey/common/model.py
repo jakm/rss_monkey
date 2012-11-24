@@ -107,7 +107,8 @@ class User(Base):
                           .query(user_entries_table.c.read)
                           .filter(user_entries_table.c.user_id == self.id,
                                   user_entries_table.c.entry_id == entry.id)
-                          .as_scalar())
+                          .one())
+        print is_read
         return bool(is_read)
 
     def set_entry_read(self, entry, read):

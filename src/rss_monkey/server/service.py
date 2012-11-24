@@ -1,9 +1,9 @@
 #-*- coding: utf8 -*-
 
+import jsonrpclib
 import logging
 from zope.interface import Interface, implements
 
-from rss_monkey.common.app_context import AppContext
 from rss_monkey.common.model import (User, Feed, FeedEntry, user_feeds_table,
                                      user_entries_table)
 from rss_monkey.common.utils import log_function_call
@@ -92,6 +92,7 @@ class RssService(object):
     implements(IRssService)
 
     db = None
+    feed_processor_rpc_port = None
 
     @log_function_call()
     def get_channels(self, user_id):
@@ -102,8 +103,8 @@ class RssService(object):
     @log_function_call()
     def reorder_channels(self, user_id, new_order):
         feeds = (self.db.query(user_feeds_table.c.feed_id)
-                       .filter(user_feeds_table.c.user_id == user_id)
-                       .all())
+                     .filter(user_feeds_table.c.user_id == user_id)
+                     .all())
 
         if not feeds:
             return
@@ -135,6 +136,11 @@ class RssService(object):
         user.feeds.append(feed)
         self.db.commit()
 
+        # notify feed processor to reload feeds
+        url = 'http://localhost:%d' % self.feed_processor_rpc_port
+        server = jsonrpclib.Server(url)
+        server._notify.reload_feeds()
+
     @log_function_call()
     def remove_channel(self, user_id, channel_id):
         user = self.db.load(User, id=user_id)
@@ -143,6 +149,8 @@ class RssService(object):
                 user.feeds.remove(feed)
                 self.db.commit()
                 break
+        else:
+            raise Exception('Cannot find channel')
 
     @log_function_call()
     def has_unread_entries(self, user_id, channel_id):
@@ -161,6 +169,7 @@ class RssService(object):
         user = self.db.load(User, id=user_id)
         entry = user.get_users_entry(entry_id)
         user.set_entry_read(entry, read)
+        self.db.commit()
 
     def _get_entries(self, user_id, channel_id, read=None, limit=None, offset=None):
         user = self.db.load(User, id=user_id)
@@ -185,15 +194,17 @@ class RssService(object):
 
             entries = q.all()
 
-        get_read = lambda e: read \
-                   if read is not None else \
-                   lambda e: user.is_entry_read(e)
+        if read is not None:
+            get_read = lambda e: read
+        else:
+            get_read = lambda e: user.is_entry_read(e)
 
         result = []
         for entry in entries:
             record = {'id': entry.id, 'title': entry.title,
                      'summary': entry.summary, 'link': entry.link,
-                     'date': entry.date, 'read': get_read(entry)}
+                     'date': str(entry.date), 'read': get_read(entry)}
+            print record
 
             result.append(record)
 

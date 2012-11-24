@@ -143,6 +143,7 @@ class AppConfig(PythonConfig):
 
         service = RssService()
         service.db = self.db()
+        service.feed_processor_rpc_port = self.config.getint('feed_processor_rpc', 'port')
 
         return service
 

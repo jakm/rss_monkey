@@ -6,12 +6,11 @@
 
 from twisted.trial import unittest
 
-from rss_monkey.common.app_context import AppContext
 from rss_monkey.common.db import Db
 from rss_monkey.common.model import Feed
 from rss_monkey.feed_processor import FeedProcessor
 
-from utils import ContainerMock, DbMock
+from utils import DbMock
 
 
 class ProcessFeedTest(unittest.TestCase):
@@ -19,13 +18,6 @@ class ProcessFeedTest(unittest.TestCase):
     def setUp(self):
         # prepare mock database object
         self.db = DbMock(Db, Feed.metadata)
-
-        # prepare mock application context
-        objects = {
-            'db': lambda _: self.db,
-        }
-        container = ContainerMock(objects)
-        AppContext.install(container.get_context())
 
     def test_get_one_feed(self):
         #setup_debug_logging()
@@ -41,6 +33,7 @@ class ProcessFeedTest(unittest.TestCase):
 
         # test FeedProcessor
         processor = FeedProcessor()
+        processor.db = self.db
         processor.process_feed(feed_id)
 
         # check result
@@ -62,6 +55,7 @@ class ProcessFeedTest(unittest.TestCase):
 
         # test FeedProcessor
         processor = FeedProcessor()
+        processor.db = self.db
         dl = processor.process_feeds()
 
         def check_result(result):

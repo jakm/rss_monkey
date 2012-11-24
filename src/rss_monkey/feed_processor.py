@@ -93,9 +93,6 @@ class FeedProcessor(object):
     download_timeout = None  # TODO: timeout!!!
     task = None
 
-    def __init__(self):
-        self.db = AppContext.get_object('db')
-
     @log_function_call()
     def schedule_jobs(self):
         if self.task:
@@ -179,8 +176,7 @@ class FeedProcessor(object):
 
 
 class FeedProcessorService(service.Service):
-    def __init__(self):
-        self.feed_processor = AppContext.get_object('feed_processor')
+    feed_processor = None
 
     def startService(self):
         LOG.info('Starting FeedProcessor')
@@ -194,8 +190,7 @@ class FeedProcessorService(service.Service):
 
 
 class FeedProcessorRpcServer(JSONRPCServer):
-    def __init__(self):
-        self.feed_processor = AppContext.get_object('feed_processor')
+    feed_processor = None
 
     @log_function_call()
     def jsonrpc_reload_feeds(self):

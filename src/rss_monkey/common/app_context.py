@@ -99,7 +99,10 @@ class FeedProcessorConfig(AppConfig):
     def feed_processor(self):
         LOG.debug('Loading feed_processor object')
         from rss_monkey.feed_processor import FeedProcessor
+
         processor = FeedProcessor()
+        processor.db = self.db()
+
         processor.download_interval = self.config.getint('feed_processor', 'download_interval')
         processor.download_timeout = self.config.getint('feed_processor', 'download_timeout')
 
@@ -113,7 +116,9 @@ class FeedProcessorConfig(AppConfig):
     def feed_processor_service(self):
         LOG.debug('Loading feed_processor_service object')
         from rss_monkey.feed_processor import FeedProcessorService
+
         service = FeedProcessorService()
+        service.feed_processor = self.feed_processor()
 
         return service
 
@@ -125,6 +130,8 @@ class FeedProcessorConfig(AppConfig):
         from rss_monkey.feed_processor import FeedProcessorRpcServer
 
         root = FeedProcessorRpcServer()
+        root.feed_processor = self.feed_processor()
+
         site = server.Site(root)
 
         port = self.config.getint('feed_processor_rpc', 'port')
@@ -143,7 +150,11 @@ class RssMonkeyServerConfig(AppConfig):
     def rss_service(self):
         LOG.debug('Loading rss_service object')
         from rss_monkey.server.service import RssService
-        return RssService()
+
+        service = RssService()
+        service.db = self.db()
+
+        return service
 
     @Object(lazy_init=True)
     def web_api(self):
@@ -152,7 +163,7 @@ class RssMonkeyServerConfig(AppConfig):
         from twisted.web import server
         from rss_monkey.server.web_api import WebApi
 
-        root = WebApi()
+        root = WebApi(self.rss_service())
         site = server.Site(root)
 
         port = self.config.getint('web_api', 'port')

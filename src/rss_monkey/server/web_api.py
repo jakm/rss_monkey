@@ -4,19 +4,19 @@ import new
 from fastjsonrpc.server import JSONRPCServer
 from zope.interface import interface
 
-from rss_monkey.common.app_context import AppContext
 from rss_monkey.common.utils import defer_to_thread
 from rss_monkey.server.service import IRssService
 
 
 class WebApi(JSONRPCServer):
-    def __init__(self):
+    def __init__(self, service):
         """
         Create new service and register its methods for RPC.
         """
-        self.service = AppContext.get_object('rss_service')
-        if not IRssService.providedBy(self.service):
+        if not IRssService.providedBy(service):
             raise TypeError('Service object has to implement IRssService')
+
+        self.service = service
 
         self.service_methods = {}
 

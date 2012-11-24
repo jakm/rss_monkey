@@ -91,8 +91,7 @@ class IRssService(Interface):
 class RssService(object):
     implements(IRssService)
 
-    def __init__(self):
-        self.db = AppContext.get_object('db')
+    db = None
 
     @log_function_call()
     def get_channels(self, user_id):

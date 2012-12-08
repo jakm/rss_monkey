@@ -160,9 +160,31 @@ class AppConfig(PythonConfig):
         port = self.config.getint('web_api', 'port')
 
         LOG.debug('Binding web_api server with port %d', port)
-        server = internet.TCPServer(port, site)
+
+        enable_ssl = self.config.getboolean('web_api', 'enable_ssl')
+
+        LOG.debug('SSL enabled: %s', enable_ssl)
+
+        if enable_ssl:
+            ctx = self.ssl_context()
+            return internet.SSLServer(port, site, ctx)
+        else:
+            return internet.TCPServer(port, site)
 
         return server
+
+    @Object(lazy_init=True)
+    def ssl_context(self):
+        from twisted.internet import ssl
+
+        private_key = self.config.get('web_api', 'private_key')
+        ca_cert = self.config.get('web_api', 'ca_cert')
+
+        LOG.debug('Loading server SSL private key and certificate: %s, %s',
+                  private_key, ca_cert)
+
+        ctx = ssl.DefaultOpenSSLContextFactory(private_key, ca_cert)
+        return ctx
 
 
 def install_context(app_config):

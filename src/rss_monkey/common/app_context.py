@@ -46,6 +46,19 @@ class AppConfig(PythonConfig):
         #logging.basicConfig(format=format, level=level, filename=filename)
         logging.root.setLevel(level)
 
+    def _get_internet_server(self, port, site):
+        from twisted.application import internet
+
+        enable_ssl = self.config.getboolean('global', 'enable_ssl')
+
+        LOG.debug('SSL enabled: %s', enable_ssl)
+
+        if enable_ssl:
+            ctx = self.ssl_context()
+            return internet.SSLServer(port, site, ctx)
+        else:
+            return internet.TCPServer(port, site)
+
     @Object(lazy_init=True)
     def db_engine(self):
         LOG.debug('Loading db engine object')
@@ -120,7 +133,6 @@ class AppConfig(PythonConfig):
     @Object(lazy_init=True)
     def feed_processor_rpc_service(self):
         LOG.debug('Loading feed_processor_rpc_service object')
-        from twisted.application import internet
         from twisted.web import server
         from rss_monkey.feed_processor import FeedProcessorRpcServer
 
@@ -132,9 +144,7 @@ class AppConfig(PythonConfig):
         port = self.config.getint('feed_processor_rpc', 'port')
 
         LOG.debug('Binding feed_processor_rpc_server with port %d', port)
-        server = internet.TCPServer(port, site)
-
-        return server
+        return self._get_internet_server(port, site)
 
     @Object(lazy_init=True)
     def rss_service(self):
@@ -150,7 +160,6 @@ class AppConfig(PythonConfig):
     @Object(lazy_init=True)
     def web_api_service(self):
         LOG.debug('Loading web_api object')
-        from twisted.application import internet
         from twisted.web import server
         from rss_monkey.server.web_api import WebApi
 
@@ -161,30 +170,36 @@ class AppConfig(PythonConfig):
 
         LOG.debug('Binding web_api server with port %d', port)
 
-        enable_ssl = self.config.getboolean('web_api', 'enable_ssl')
-
-        LOG.debug('SSL enabled: %s', enable_ssl)
-
-        if enable_ssl:
-            ctx = self.ssl_context()
-            return internet.SSLServer(port, site, ctx)
-        else:
-            return internet.TCPServer(port, site)
-
-        return server
+        return self._get_internet_server(port, site)
 
     @Object(lazy_init=True)
     def ssl_context(self):
         from twisted.internet import ssl
 
-        private_key = self.config.get('web_api', 'private_key')
-        ca_cert = self.config.get('web_api', 'ca_cert')
+        private_key = self.config.get('global', 'private_key')
+        ca_cert = self.config.get('global', 'ca_cert')
 
         LOG.debug('Loading server SSL private key and certificate: %s, %s',
                   private_key, ca_cert)
 
-        ctx = ssl.DefaultOpenSSLContextFactory(private_key, ca_cert)
-        return ctx
+        return ssl.DefaultOpenSSLContextFactory(private_key, ca_cert)
+
+    @Object(lazy_init=True)
+    def registration_service(self):
+        LOG.debug('Loading registration_service object')
+        from twisted.web import server
+        from rss_monkey.server.registration import RegistrationRpcServer
+
+        root = RegistrationRpcServer()
+        root.db = self.db()
+
+        site = server.Site(root)
+
+        port = self.config.getint('registration_rpc', 'port')
+
+        LOG.debug('Binding feed_processor_rpc_server with port %d', port)
+
+        return self._get_internet_server(port, site)
 
 
 def install_context(app_config):

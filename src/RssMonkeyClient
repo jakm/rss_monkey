@@ -8,24 +8,65 @@ from twisted.internet import gtk2reactor
 gtk2reactor.install()
 
 
+class ConfigurationWindow(object):
+    def __init__(self, ui_file):
+        self.builder = gtk.Builder()
+        self.builder.add_from_file(ui_file)
+
+        signals = {'on_test_login_button_clicked': lambda widget, *data: None,
+                   'on_register_button_clicked': lambda widget, *data: None,
+                   'on_test_connection_button_clicked': lambda widget, *data: None,
+                   'on_cancel_button_clicked': lambda widget, *data: self.close(),
+                   'on_ok_button_clicked': lambda widget, *data: None}
+
+        self.builder.connect_signals(signals)
+
+        self.window = self.builder.get_object('configuration')
+        self.window.connect('destroy', lambda widget, *data: self.close())
+        self.window.set_modal(True)
+
+    def close(self):
+        self.window.hide()
+        self.window.destroy()
+
+    def show(self):
+        self.window.show()
+
+
+class MainWindow(object):
+    def __init__(self, ui_file):
+        self.builder = gtk.Builder()
+        self.builder.add_from_file(ui_file)
+
+        signals = {'on_quit_mi_activate': gtk.main_quit,
+                   'on_connect_mi_activate': lambda widget, *data: None,
+                   'on_disconnect_mi_activate': lambda widget, *data: None,
+                   'on_config_mi_activate': self._on_config_mi_activate,
+                   'on_new_channel_mi_activate': lambda widget, *data: None,
+                   'on_del_channel_mi_activate': lambda widget, *data: None,
+                   'on_refresh_mi_activate': lambda widget, *data: None,
+                   'on_about_mi_activate': lambda widget, *data: None}
+
+        self.builder.connect_signals(signals)
+
+        self.main_window = self.builder.get_object('main_window')
+        self.main_window.connect('destroy', gtk.main_quit)
+
+    def show(self):
+        self.main_window.show_all()
+
+    def _on_config_mi_activate(self, widget, *data):
+        self.main_window.set_sensitive(False)
+        try:
+            window = ConfigurationWindow('ui/configuration.glade')
+            window.show()
+        finally:
+            self.main_window.set_sensitive(True)
+
+
 def main():
-    builder = gtk.Builder()
-    builder.add_from_file('ui/main.glade')
-
-    signals = {'on_quit_mi_activate': gtk.main_quit,
-               'on_connect_mi_activate': lambda widget, *data: None,
-               'on_disconnect_mi_activate': lambda widget, *data: None,
-               'on_config_mi_activate': lambda widget, *data: None,
-               'on_new_channel_mi_activate': lambda widget, *data: None,
-               'on_del_channel_mi_activate': lambda widget, *data: None,
-               'on_refresh_mi_activate': lambda widget, *data: None,
-               'on_about_mi_activate': lambda widget, *data: None}
-
-    builder.connect_signals(signals)
-
-    main_window = builder.get_object('main_window')
-    main_window.connect('destroy', gtk.main_quit)
-    main_window.show_all()
+    main_window = MainWindow('ui/main.glade')
+    main_window.show()
 
     gtk.main()
 

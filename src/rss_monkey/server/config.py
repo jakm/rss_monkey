@@ -6,7 +6,7 @@ from ConfigParser import RawConfigParser
 from springpython.config import Object, PythonConfig
 from twisted.internet import reactor
 
-CONFIG_FILE = '/etc/rss_monkey.ini'
+CONFIG_FILE = '/etc/rss_monkey_server.ini'
 
 logging.basicConfig()
 LOG = logging.getLogger(__name__)

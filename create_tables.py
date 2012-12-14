@@ -38,9 +38,9 @@ def prepare_import():
 
 
 def connect():
-    from rss_monkey.common import app_context
-    app_context.install_context(app_context.AppConfig())
-    return app_context.AppContext.get_object('db_engine')
+    from rss_monkey.common import context
+    context.install_context(context.AppConfig())
+    return context.AppContext.get_object('db_engine')
 
 
 def create_tables(engine, force=False):

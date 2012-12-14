@@ -8,7 +8,7 @@ from fastjsonrpc.server import JSONRPCServer
 from twisted.application import service
 from twisted.internet import defer, task, threads
 
-from rss_monkey.common.app_context import AppContext
+from rss_monkey.common.context import AppContext
 from rss_monkey.common.model import Feed, FeedEntry
 from rss_monkey.common.utils import log_function_call
 

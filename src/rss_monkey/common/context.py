@@ -24,10 +24,10 @@ class AppContext(object):
         return AppContext._context.get_object(name, ignore_abstract)
 
     @staticmethod
-    def install(app_context):
-        if not isinstance(app_context, ObjectContainer):
+    def install(context):
+        if not isinstance(context, ObjectContainer):
             raise TypeError('Context has to inherit from ObjectContainer')
-        AppContext._context = app_context
+        AppContext._context = context
 
 
 class AppConfig(PythonConfig):

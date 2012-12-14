@@ -3,15 +3,15 @@
 import logging
 from twisted.application import service
 
-from rss_monkey.common import app_context
+from rss_monkey.common import context
 
 LOG = logging.getLogger('FeedProcessorService')
 
-app_context.install_context(app_context.AppConfig())
+context.install_context(context.AppConfig())
 
 
 def set_service(service_name, parent):
-    service = app_context.AppContext.get_object(service_name)
+    service = context.AppContext.get_object(service_name)
     service.setServiceParent(parent)
     return service
 

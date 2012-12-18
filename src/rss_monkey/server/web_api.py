@@ -5,17 +5,17 @@ from fastjsonrpc.server import JSONRPCServer
 from zope.interface import interface
 
 from rss_monkey.common.utils import defer_to_thread
-from rss_monkey.server.service import IRssService
 
 
 class WebApi(JSONRPCServer):
-    def __init__(self, service):
+    def __init__(self, interface, service):
         """
         Create new service and register its methods for RPC.
         """
-        if not IRssService.providedBy(service):
+        if not interface.providedBy(service):
             raise TypeError('Service object has to implement IRssService')
 
+        self.interface = interface
         self.service = service
 
         self.service_methods = {}
@@ -23,8 +23,8 @@ class WebApi(JSONRPCServer):
         self._extend_with_service_methods()
 
     def _extend_with_service_methods(self):
-        method_names = [name for name in list(IRssService)
-                        if isinstance(IRssService.get(name), interface.Method)]
+        method_names = [name for name in list(self.interface)
+                        if isinstance(self.interface.get(name), interface.Method)]
 
         @defer_to_thread
         def wrapper(method_name, *args, **kw):
@@ -47,7 +47,7 @@ class WebApi(JSONRPCServer):
             method = wrap_method(method_name)
 
             method.__doc__ = 'Warning! Method wrapper returns deferred!\n'
-            doc = IRssService.get(method_name).getDoc()
+            doc = self.interface.get(method_name).getDoc()
             if doc:
                 method.__doc__ += doc
 

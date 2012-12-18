@@ -2,90 +2,42 @@
 
 import jsonrpclib
 import logging
-from zope.interface import Interface, implements
+from zope.interface import implements
 
 from rss_monkey.common.model import (User, Feed, FeedEntry, user_feeds_table,
                                      user_entries_table)
 from rss_monkey.common.utils import log_function_call
+from rss_monkey.server.interfaces import (ILoginService, IRegistrationService,
+                                          IRssService)
 
 logging.basicConfig()
 LOG = logging.getLogger(__name__)
 
 
 class LoginService(object):
+    implements(ILoginService)
+
+    @log_function_call()
     def login(self, login, passwd):
         pass
         # TODO: vygeneruje nejaky klic, ulozi do db a vrati zpet
 
 
-class IRssService(Interface):
-    """
-    Interface of essential service to control user's channels and entries.
-    """
+class RegistrationService(object):
+    implements(IRegistrationService)
 
-    def get_channels(self, user_id):
-        """
-        Retrieve channels registered by user. Records are in format:
-        {'id': int, 'title': str, 'url': str}
+    db = None
 
-        @param user_id int, User ID
-        @return tuple, Tuple of records
-        """
+    @log_function_call()
+    def register_user(self, login, passwd):
+        assert login <= 20
+        assert passwd == 64
 
-    def reorder_channels(self, user_id, new_order):
-        """
-        Change ordering of user's channels.
-
-        @param user_id int, User ID
-        @param new_order sequence, Sequence of ordered channel IDs
-        """
-
-    def add_channel(self, user_id, url):
-        """
-        Bind user with channel. If channel doesn't exist create new record.
-
-        @param user_id int, User ID
-        @param url str, URL of channel
-        """
-
-    def remove_channel(self, user_id, channel_id):
-        """
-        Unbind user with channel. If channel is not bound with any user remove it.
-
-        @param user_id int, User ID
-        @param channel_id int, Channel ID
-        """
-
-    def has_unread_entries(self, user_id, channel_id):
-        """
-        True if channel has unread entries or False.
-
-        @param user_id int, User ID
-        @param channel_id int, Channel ID
-        @return bool
-        """
-
-    def get_entries(self, user_id, channel_id, limit=None, offset=None):
-        """
-        Return entries with any read status. Records are in format:
-        {'id', int, 'title': str, 'summary': str, 'link': str, 'date':
-         datetime.datetime, 'read': bool}
-
-        @param user_id int, User ID
-        @param channel_id int, Channel ID
-        @param limit int, Maximal number of returned records or None for unlimited
-        @param offset int, Number of records to skip
-        @return tuple, Tuple of records
-        """
-
-    def set_entry_read(self, user_id, entry_id, read):
-        """
-        Set read status of entry.
-
-        @param user_id int, User ID
-        @param entry_id int, Entry ID
-        @param read bool, Read status of entry
-        """
+        try:
+            user = User(login=login, passwd=passwd)
+            self.db.store(user)
+        except Exception:
+            raise # TODO: zkontrolovat, co vyhazuje a zaridit se podle toho
 
 
 class RssService(object):

@@ -9,6 +9,18 @@ class IService(Interface):
     """
 
 
+class ITestService(IService):
+    """
+    Interface of test service.
+    """
+
+    def test(self):
+        """
+        Return 'OK' when server is alive.
+        @return string
+        """
+
+
 class ILoginService(IService):
     """
     Interface of login service.

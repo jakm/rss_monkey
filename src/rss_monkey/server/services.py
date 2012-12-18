@@ -8,10 +8,18 @@ from rss_monkey.common.model import (User, Feed, FeedEntry, user_feeds_table,
                                      user_entries_table)
 from rss_monkey.common.utils import log_function_call
 from rss_monkey.server.interfaces import (ILoginService, IRegistrationService,
-                                          IRssService)
+                                          IRssService, ITestService)
 
 logging.basicConfig()
 LOG = logging.getLogger(__name__)
+
+
+class TestService(object):
+    implements(ITestService)
+
+    @log_function_call()
+    def test(self):
+        return 'OK'
 
 
 class LoginService(object):

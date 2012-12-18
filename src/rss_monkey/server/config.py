@@ -146,6 +146,15 @@ class AppConfig(PythonConfig):
         return service
 
     @Object(lazy_init=True)
+    def test_service(self):
+        LOG.debug('Loading test_service object')
+        from rss_monkey.server.services import TestService
+
+        service = TestService()
+
+        return service
+
+    @Object(lazy_init=True)
     def rss_api(self):
         LOG.debug('Loading rss_api object')
         from rss_monkey.server.interfaces import IRssService
@@ -174,6 +183,15 @@ class AppConfig(PythonConfig):
         return resource
 
     @Object(lazy_init=True)
+    def test_api(self):
+        LOG.debug('Loading test_api object')
+        from rss_monkey.server.interfaces import ITestService
+        from rss_monkey.server.web_api import WebApi
+
+        resource = WebApi(ITestService, self.test_service())
+        return resource
+
+    @Object(lazy_init=True)
     def web_api_server(self):
         LOG.debug('Loading web_api_server object')
         from twisted.web import resource, server
@@ -182,6 +200,7 @@ class AppConfig(PythonConfig):
         root.putChild('rss', self.rss_api())
         root.putChild('login', self.login_api())
         root.putChild('registration', self.registration_api())
+        root.putChild('test', self.test_api())
 
         site = server.Site(root)
 

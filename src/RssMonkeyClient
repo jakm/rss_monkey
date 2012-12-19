@@ -7,17 +7,21 @@ import gtk
 from twisted.internet import gtk2reactor
 gtk2reactor.install()
 
+from twisted.internet import reactor
+
 
 class ConfigurationWindow(object):
-    def __init__(self, ui_file):
+    salt = None
+
+    def initialize(self, ui_file):
         self.builder = gtk.Builder()
         self.builder.add_from_file(ui_file)
 
-        signals = {'on_test_login_button_clicked': lambda widget, *data: None,
-                   'on_register_button_clicked': lambda widget, *data: None,
-                   'on_test_connection_button_clicked': lambda widget, *data: None,
+        signals = {'on_test_login_button_clicked': self._on_test_connection_button_clicked,
+                   'on_register_button_clicked': self._on_register_button_clicked,
+                   'on_test_connection_button_clicked': self._on_test_connection_button_clicked,
                    'on_cancel_button_clicked': lambda widget, *data: self.close(),
-                   'on_ok_button_clicked': lambda widget, *data: None}
+                   'on_ok_button_clicked': self._on_ok_button_clicked}
 
         self.builder.connect_signals(signals)
 
@@ -32,9 +36,27 @@ class ConfigurationWindow(object):
     def show(self):
         self.window.show()
 
+    def _on_test_login_button_clicked(self, widget, *data):
+        pass
+
+    def _on_register_button_clicked(self, widget, *data):
+        pass
+
+    def _on_test_connection_button_clicked(self, widget, *data):
+        pass
+
+    def _on_ok_button_clicked(self, widget, *data):
+        pass
+
+    def _create_passwd_hash(self, passwd):
+        from hashlib import sha256
+        assert self.salt
+        digest = sha256(self.salt + passwd)
+        return digest.hexdigest()
+
 
 class MainWindow(object):
-    def __init__(self, ui_file):
+    def initialize(self, ui_file):
         self.builder = gtk.Builder()
         self.builder.add_from_file(ui_file)
 
@@ -58,17 +80,37 @@ class MainWindow(object):
     def _on_config_mi_activate(self, widget, *data):
         self.main_window.set_sensitive(False)
         try:
-            window = ConfigurationWindow('ui/configuration.glade')
+            window = ConfigurationWindow()
+            window.initialize('ui/configuration.glade')
             window.show()
         finally:
             self.main_window.set_sensitive(True)
 
+    def _on_connect_mi_activate(self, widget, *data):
+        pass
+
+    def _on_disconnect_mi_activate(self, widget, *data):
+        pass
+
+    def _on_new_channel_mi_activate(self, widget, *data):
+        pass
+
+    def _on_del_channel_mi_activate(self, widget, *data):
+        pass
+
+    def _on_refresh_mi_activate(self, widget, *data):
+        pass
+
+    def _on_about_mi_activate(self, widget, *data):
+        pass
+
 
 def main():
-    main_window = MainWindow('ui/main.glade')
+    main_window = MainWindow()
+    main_window.initialize('ui/main.glade')
     main_window.show()
 
-    gtk.main()
+    reactor.run()
 
 if __name__ == '__main__':
     main()

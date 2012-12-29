@@ -30,6 +30,10 @@ class LoginService(object):
         pass
         # TODO: vygeneruje nejaky klic, ulozi do db a vrati zpet
 
+    @log_function_call()
+    def logout(self, session_token):
+        pass
+
 
 class RegistrationService(object):
     implements(IRegistrationService)

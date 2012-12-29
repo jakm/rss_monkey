@@ -35,6 +35,13 @@ class ILoginService(IService):
         @return string, Session token
         """
 
+    def logout(self, session_token):
+        """
+        Logout session.
+
+        @param session_token str, Session token
+        """
+
 
 class IRegistrationService(IService):
     """

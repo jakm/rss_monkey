@@ -127,15 +127,6 @@ class AppConfig(PythonConfig):
         return service
 
     @Object(lazy_init=True)
-    def login_service(self):
-        LOG.debug('Loading login_service object')
-        from rss_monkey.server.services import LoginService
-
-        service = LoginService()
-
-        return service
-
-    @Object(lazy_init=True)
     def registration_service(self):
         LOG.debug('Loading registration_service object')
         from rss_monkey.server.services import RegistrationService
@@ -158,37 +149,33 @@ class AppConfig(PythonConfig):
     def rss_api(self):
         LOG.debug('Loading rss_api object')
         from rss_monkey.server.interfaces import IRssService
-        from rss_monkey.server.web_api import WebApi
+        from rss_monkey.server.web_api import ApiResourceGenerator
 
-        resource = WebApi(IRssService, self.rss_service())
+        api_generator = ApiResourceGenerator('RssApi', IRssService)
+        resource = api_generator(self.rss_service())
 
-        return resource
-
-    @Object(lazy_init=True)
-    def login_api(self):
-        LOG.debug('Loading login_api object')
-        from rss_monkey.server.interfaces import ILoginService
-        from rss_monkey.server.web_api import WebApi
-
-        resource = WebApi(ILoginService, self.login_service())
         return resource
 
     @Object(lazy_init=True)
     def registration_api(self):
         LOG.debug('Loading registration_api object')
         from rss_monkey.server.interfaces import IRegistrationService
-        from rss_monkey.server.web_api import WebApi
+        from rss_monkey.server.web_api import ApiResourceGenerator
 
-        resource = WebApi(IRegistrationService, self.registration_service())
+        api_generator = ApiResourceGenerator('RegistrationApi', IRegistrationService)
+        resource = api_generator(self.registration_service())
+
         return resource
 
     @Object(lazy_init=True)
     def test_api(self):
         LOG.debug('Loading test_api object')
         from rss_monkey.server.interfaces import ITestService
-        from rss_monkey.server.web_api import WebApi
+        from rss_monkey.server.web_api import ApiResourceGenerator
 
-        resource = WebApi(ITestService, self.test_service())
+        api_generator = ApiResourceGenerator('TestApi', ITestService)
+        resource = api_generator(self.test_service())
+
         return resource
 
     @Object(lazy_init=True)
@@ -198,7 +185,6 @@ class AppConfig(PythonConfig):
 
         root = resource.Resource()
         root.putChild('rss', self.rss_api())
-        root.putChild('login', self.login_api())
         root.putChild('registration', self.registration_api())
         root.putChild('test', self.test_api())
 

@@ -7,8 +7,8 @@ from zope.interface import implements
 from rss_monkey.common.model import (User, Feed, FeedEntry, user_feeds_table,
                                      user_entries_table)
 from rss_monkey.common.utils import log_function_call
-from rss_monkey.server.interfaces import (ILoginService, IRegistrationService,
-                                          IRssService, ITestService)
+from rss_monkey.server.interfaces import (IRegistrationService, IRssService,
+                                          ITestService)
 
 logging.basicConfig()
 LOG = logging.getLogger(__name__)
@@ -20,19 +20,6 @@ class TestService(object):
     @log_function_call()
     def test(self):
         return 'OK'
-
-
-class LoginService(object):
-    implements(ILoginService)
-
-    @log_function_call()
-    def login(self, login, passwd):
-        pass
-        # TODO: vygeneruje nejaky klic, ulozi do db a vrati zpet
-
-    @log_function_call()
-    def logout(self, session_token):
-        pass
 
 
 class RegistrationService(object):
@@ -57,17 +44,18 @@ class RssService(object):
 
     db = None
     feed_processor_rpc_port = None
+    user_id = None
 
     @log_function_call()
-    def get_channels(self, user_id):
-        user = self.db.load(User, id=user_id)
+    def get_channels(self):
+        user = self.db.load(User, id=self.user_id)
         return tuple([{'id': feed.id, 'title': feed.title, 'url': feed.url}
             for feed in user.feeds])
 
     @log_function_call()
-    def reorder_channels(self, user_id, new_order):
+    def reorder_channels(self, new_order):
         feeds = (self.db.query(user_feeds_table.c.feed_id)
-                     .filter(user_feeds_table.c.user_id == user_id)
+                     .filter(user_feeds_table.c.user_id == self.user_id)
                      .all())
 
         if not feeds:
@@ -84,7 +72,7 @@ class RssService(object):
                 self.db.execute(
                     user_feeds_table.update()
                         .where(user_feeds_table.c.feed_id == feed_id)
-                        .where(user_feeds_table.c.user_id == user_id)
+                        .where(user_feeds_table.c.user_id == self.user_id)
                         .values({user_feeds_table.c.order: order})
                 )
         except:
@@ -94,8 +82,8 @@ class RssService(object):
             self.db.commit()
 
     @log_function_call()
-    def add_channel(self, user_id, url):
-        user = self.db.load(User, id=user_id)
+    def add_channel(self, url):
+        user = self.db.load(User, id=self.user_id)
         feed = Feed(url=url)
         user.feeds.append(feed)
         self.db.commit()
@@ -106,8 +94,8 @@ class RssService(object):
         server._notify.reload_feeds()
 
     @log_function_call()
-    def remove_channel(self, user_id, channel_id):
-        user = self.db.load(User, id=user_id)
+    def remove_channel(self, channel_id):
+        user = self.db.load(User, id=self.user_id)
         for feed in user.feeds:
             if feed.id == channel_id:
                 user.feeds.remove(feed)
@@ -117,20 +105,20 @@ class RssService(object):
             raise Exception('Cannot find channel')
 
     @log_function_call()
-    def has_unread_entries(self, user_id, channel_id):
-        return len(self.get_unread_entries(user_id, channel_id)) > 0
+    def has_unread_entries(self, channel_id):
+        return len(self.get_unread_entries(self.user_id, channel_id)) > 0
 
     @log_function_call()
-    def get_unread_entries(self, user_id, channel_id, limit=None, offset=None):
-        return self._get_entries(user_id, channel_id, read=False, limit=limit, offset=offset)
+    def get_unread_entries(self, channel_id, limit=None, offset=None):
+        return self._get_entries(self.user_id, channel_id, read=False, limit=limit, offset=offset)
 
     @log_function_call()
-    def get_entries(self, user_id, channel_id, limit=None, offset=None):
-        return self._get_entries(user_id, channel_id, limit=limit, offset=offset)
+    def get_entries(self, channel_id, limit=None, offset=None):
+        return self._get_entries(self.user_id, channel_id, limit=limit, offset=offset)
 
     @log_function_call()
-    def set_entry_read(self, user_id, entry_id, read):
-        user = self.db.load(User, id=user_id)
+    def set_entry_read(self, entry_id, read):
+        user = self.db.load(User, id=self.user_id)
         entry = user.get_users_entry(entry_id)
         user.set_entry_read(entry, read)
         self.db.commit()

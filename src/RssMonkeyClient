@@ -97,6 +97,7 @@ class ConfigurationWindow(object):
     def show(self):
         self.dialog.show()
 
+    @defer.inlineCallbacks
     def on_register_button_clicked(self, widget, *data):
         pass
 
@@ -122,6 +123,7 @@ class ConfigurationWindow(object):
             print e.__class__.__name__, str(e)
             self.server_status.set_text(' X ')
 
+    @defer.inlineCallbacks
     def on_credentials_changed(self, widget, *data):
         login = self.login_entry.get_text().strip()
         passwd = self.passwd_entry.get_text().strip()
@@ -155,38 +157,15 @@ class ConfigurationWindow(object):
 
     def _check_credentials(self, url, login, passwd):
         #pwdhash = self._create_passwd_hash(passwd)
-        pass
+        client = RssClient()
+        client.connect(url, login, passwd) # HACK!!!
+        print client.channels
 
     def _create_passwd_hash(self, passwd):
         from hashlib import sha256
         assert self.salt
         digest = sha256(self.salt + passwd)
         return digest.hexdigest()
-
-    # def _show_error_dialog(self, message):
-    #     dialog = gtk.MessageDialog(self.dialog,
-    #                                gtk.DIALOG_DESTROY_WITH_PARENT,
-    #                                gtk.MESSAGE_ERROR,
-    #                                gtk.BUTTONS_CLOSE, message)
-    #     dialog.run()
-    #     dialog.destroy()
-
-    # def _show_progress_dialog(self, message):
-    #     dialog = gtk.MessageDialog(self.dialog,
-    #                                gtk.DIALOG_DESTROY_WITH_PARENT,
-    #                                gtk.MESSAGE_INFO,
-    #                                gtk.BUTTONS_CANCEL, message)
-    #     dialog.run()
-    #     dialog.destroy()
-
-    # TODO: !!!!docasne reseni nez naimplementuji SSL do fastjsonrpc
-    # @defer_to_thread
-    # def _call_rpc_method(self, url, method, params=[]):
-    #     import jsonrpclib
-    #     server = jsonrpclib.Server(url)
-    #     res = eval('server.%s(*%s)' % (method, str(params)))
-    #     if res != 'OK':
-    #         raise ValueError('') # TODO: hlaska
 
 
 class MainWindow(object):

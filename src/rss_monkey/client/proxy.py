@@ -1,9 +1,18 @@
 # -*- coding: utf8 -*-
 
 import new
+import base64
 from fastjsonrpc.client import Proxy
 from fastjsonrpc.jsonrpc import VERSION_2
+from twisted.internet import reactor
+from twisted.internet.ssl import ClientContextFactory
+from twisted.web.client import Agent
 from zope.interface import Interface, interface
+
+
+class WebClientContextFactory(ClientContextFactory):
+    def getContext(self, hostname, port):
+        return ClientContextFactory.getContext(self)
 
 
 class JsonRpcProxy(object):
@@ -50,13 +59,29 @@ class JsonRpcProxy(object):
         method = new.instancemethod(func, self, self.__class__)
         setattr(self, method_name, method)
 
-    def _connect(self, url):
+    def _connect(self, url, login=None, passwd=None, protocol='http'):
         """
         Connect proxy object to RPC server.
 
         @param url str, URL address of RPC server
+        @param login str, User name
+        @param passwd str, User's password
+        @param protocol str, 'http' or 'https'
         """
-        self.proxy = Proxy(url, VERSION_2)
+
+        agent = None
+        if protocol == 'https':
+            agent = Agent(reactor, WebClientContextFactory())
+
+        extra_headers = {}
+        if login:
+            if passwd is None:
+                passwd = ''
+            basic_auth = base64.encodestring('%s:%s' % (login, passwd))
+            auth_header = "Basic " + basic_auth.strip()
+            extra_headers['Authorization': auth_header]
+
+        self.proxy = Proxy(url, VERSION_2, agent=agent, extra_headers=extra_headers)
 
     def _close(self):
         """

@@ -1,13 +1,12 @@
 # -*- coding: utf8 -*-
 
-import jsonrpclib
 from urllib2 import urlparse
 
 from twisted.internet import defer
 
 from rss_monkey.client.proxy import JsonRpcProxy
-from rss_monkey.server.interfaces import (ILoginService, IRegistrationService,
-                                          IRssService, ITestService)
+from rss_monkey.server.interfaces import (ITestService, IRegistrationService,
+                                          IRssService)
 
 class RssClientError(Exception):
     pass
@@ -45,22 +44,27 @@ class Entry(object):
 
 class RssClient(object):
     def __init__(self):
-        self.connected = False
-        self.login_svc_proxy = None
-        self.rss_svc_proxy = None
-        self.session_token = None
+        self._is_connected = False
+        self.rpc_proxy = JsonRpcProxy(IRssService)
 
     def connect(self, url, login, passwd):
-        self.login_svc_proxy = JsonRpcProxy(ILoginService)
-        self.login_svc_proxy._connect(url)
-        self.session_token = self.login_svc_proxy.login(login, passwd)
+        url, p = RssClient._get_url_and_protocol(url, 'rss')
+
+        self.rpc_proxy._connect(url, login=login, passwd=passwd, protocol=p)
 
     def disconnect(self):
         self.login_svc_proxy.logout(self.session_token)
 
     @property
+    def is_connected(self):
+        return self._is_connected
+
+    @property
     def channels(self):
-        pass
+        if not self.is_connected:
+            raise Exception() # TODO: exception
+
+        return self.rpc_proxy.jsonrpc_get_channels()
 
     @staticmethod
     def register_user(url, login, passwd):
@@ -69,24 +73,24 @@ class RssClient(object):
     @staticmethod
     @defer.inlineCallbacks
     def test_connection(url):
-        RssClient._check_url(url)
-        url = RssClient._urljoin(url, 'test')
+        url, p = RssClient._get_url_and_protocol(url, 'test')
 
-        test_svc_proxy = JsonRpcProxy(ITestService)
-        test_svc_proxy._connect(url)
-        res = yield test_svc_proxy.test()
+        proxy = JsonRpcProxy(ITestService)
+        proxy._connect(url, protocol=p)
+        res = yield proxy.test()
 
         if res != 'OK':
             raise ValueError('Server returned unexpected value')
 
     @staticmethod
-    def _check_url(url):
-        parsed = urlparse.urlparse(url)
+    def _get_url_and_protocol(base_url, path):
+        parsed = urlparse.urlparse(base_url)
+
         if parsed.scheme not in ('http', 'https'):
             raise ValueError('Podporovány jsou pouze protokoly HTTP a HTTPS')
 
-    @staticmethod
-    def _urljoin(url, path):
-        parsed = urlparse.urlparse(url)
         path = parsed.path + '/' + path
-        return urlparse.urljoin(url, path)
+
+        url = urlparse.urljoin(base_url, path)
+
+        return url, parsed.scheme

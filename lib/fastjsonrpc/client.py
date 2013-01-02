@@ -105,7 +105,7 @@ class Proxy(object):
     *args.
     """
 
-    def __init__(self, url, version=jsonrpc.VERSION_1):
+    def __init__(self, url, version=jsonrpc.VERSION_1, agent=None, extra_headers=None):
         """
         @type url: str
         @param url: URL of the RPC server. Only supports HTTP for now, HTTPS
@@ -117,6 +117,9 @@ class Proxy(object):
 
         self.url = url
         self.version = version
+
+        self.agent = agent if agent else Agent(reactor)
+        self.extra_headers = extra_headers
 
     def bodyFromResponse(self, response):
         """
@@ -158,10 +161,12 @@ class Proxy(object):
             json_request = jsonrpc.encodeRequest(method, args,
                                                  version=self.version)
 
-        agent = Agent(reactor)
+        agent = self.agent
         body = StringProducer(json_request)
-        headers = Headers({'Content-Type': ['application/json'],
-                           'Content-Length': [str(body.length)]})
+        headers_dict = {'Content-Type': ['application/json'],
+                        'Content-Length': [str(body.length)]}
+        headers_dict.update(self.extra_headers)
+        headers = Headers(headers_dict)
 
         d = agent.request('POST', self.url, headers, body)
         d.addCallback(self.bodyFromResponse)

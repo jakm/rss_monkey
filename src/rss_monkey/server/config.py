@@ -159,7 +159,7 @@ class AppConfig(PythonConfig):
     def rss_api_factory(self):
         LOG.debug('Loading rss_api_factory object')
         from rss_monkey.server.interfaces import IRssService
-        from rss_monkey.server.web_api import ApiResourceFactory
+        from rss_monkey.server.api import ApiResourceFactory
 
         factory = ApiResourceFactory('RssApi', IRssService)
         return factory
@@ -167,7 +167,7 @@ class AppConfig(PythonConfig):
     @Object(lazy_init=True)
     def rss_resource_factory(self):
         LOG.debug('Loading rss_resource_factory object')
-        from rss_monkey.server.web_api import RssResourceFactory
+        from rss_monkey.server.api import RssResourceFactory
 
         factory = RssResourceFactory()
         factory.api_factory = self.rss_api_factory()
@@ -194,7 +194,7 @@ class AppConfig(PythonConfig):
     def registration_api(self):
         LOG.debug('Loading registration_api object')
         from rss_monkey.server.interfaces import IRegistrationService
-        from rss_monkey.server.web_api import ApiResourceFactory
+        from rss_monkey.server.api import ApiResourceFactory
 
         factory = ApiResourceFactory('RegistrationApi', IRegistrationService)
         resource = factory(self.registration_service())
@@ -204,7 +204,7 @@ class AppConfig(PythonConfig):
     def test_api(self):
         LOG.debug('Loading test_api object')
         from rss_monkey.server.interfaces import ITestService
-        from rss_monkey.server.web_api import ApiResourceFactory
+        from rss_monkey.server.api import ApiResourceFactory
 
         factory = ApiResourceFactory('TestApi', ITestService)
         resource = factory(self.test_service())

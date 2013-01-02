@@ -215,6 +215,7 @@
                             <property name="width_request">350</property>
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
+                            <property name="has_focus">True</property>
                             <property name="invisible_char">●</property>
                             <signal name="changed" handler="on_server_url_entry_changed" swapped="no"/>
                           </object>

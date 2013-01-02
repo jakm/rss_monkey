@@ -121,6 +121,12 @@ class Proxy(object):
         self.agent = agent if agent else Agent(reactor)
         self.extra_headers = extra_headers
 
+    def checkCodeOfResponse(self, response):
+        if response.code != 200:
+            raise jsonrpc.JSONRPCError('Server returned code: %s' % response.code)
+
+        return response
+
     def bodyFromResponse(self, response):
         """
         Parses out the body from the response
@@ -169,6 +175,7 @@ class Proxy(object):
         headers = Headers(headers_dict)
 
         d = agent.request('POST', self.url, headers, body)
+        d.addCallback(self.checkCodeOfResponse)
         d.addCallback(self.bodyFromResponse)
         d.addCallback(jsonrpc.decodeResponse)
         return d

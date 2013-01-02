@@ -159,7 +159,7 @@ class ConfigurationWindow(object):
         #pwdhash = self._create_passwd_hash(passwd)
         client = RssClient()
         client.connect(url, login, passwd) # HACK!!!
-        print client.channels
+        return client.get_channels() # do request with credentials
 
     def _create_passwd_hash(self, passwd):
         from hashlib import sha256

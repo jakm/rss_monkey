@@ -366,3 +366,6 @@ class JSONRPCError(Exception):
         self.data = data
         self.id_ = id_
         self.version = version
+
+    def __str__(self):
+        return self.strerror

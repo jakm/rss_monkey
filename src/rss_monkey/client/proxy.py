@@ -79,7 +79,7 @@ class JsonRpcProxy(object):
                 passwd = ''
             basic_auth = base64.encodestring('%s:%s' % (login, passwd))
             auth_header = "Basic " + basic_auth.strip()
-            extra_headers['Authorization': auth_header]
+            extra_headers['Authorization'] = [auth_header]
 
         self.proxy = Proxy(url, VERSION_2, agent=agent, extra_headers=extra_headers)
 

@@ -20,8 +20,7 @@ class Channel(object):
     link = None
     modified = None
 
-    @property
-    def entries(self):
+    def get_entries(self):
         pass
 
 
@@ -51,20 +50,24 @@ class RssClient(object):
         url, p = RssClient._get_url_and_protocol(url, 'rss')
 
         self.rpc_proxy._connect(url, login=login, passwd=passwd, protocol=p)
+        self._is_connected = True
 
-    def disconnect(self):
-        self.login_svc_proxy.logout(self.session_token)
+    def close(self):
+        self.rpc_proxy._close()
+        self._is_connected = False
 
     @property
     def is_connected(self):
         return self._is_connected
 
-    @property
-    def channels(self):
-        if not self.is_connected:
-            raise Exception() # TODO: exception
+    def get_channels(self):
+        self._check_connected()
 
-        return self.rpc_proxy.jsonrpc_get_channels()
+        return self.rpc_proxy.get_channels()
+
+    def _check_connected(self):
+        if not self.is_connected:
+            raise ValueError('Client is not connected')
 
     @staticmethod
     def register_user(url, login, passwd):

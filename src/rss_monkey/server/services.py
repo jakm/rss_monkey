@@ -29,14 +29,15 @@ class RegistrationService(object):
 
     @log_function_call()
     def register_user(self, login, passwd):
-        assert login <= 20
-        assert passwd == 64
+        assert len(login) > 0 and len(login) <= 20, 'login length'
+        assert len(passwd) == 64, 'passwd length'
 
         try:
             user = User(login=login, passwd=passwd)
             self.db.store(user)
+            self.db.commit()
         except Exception:
-            raise # TODO: zkontrolovat, co vyhazuje a zaridit se podle toho
+            raise ValueError('Registration failed')
 
 
 class RssService(object):

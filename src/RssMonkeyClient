@@ -5,17 +5,56 @@ import pygtk
 pygtk.require20()
 import gtk
 
-from urllib2 import urlparse
-
 from twisted.internet import gtk2reactor
 gtk2reactor.install()
+
+import logging
+import os.path
+
+from ConfigParser import ConfigParser
 
 from twisted.internet import defer
 from twisted.internet import reactor
 from twisted.internet import task
 
 from rss_monkey.client import RssClient
-from rss_monkey.common.utils import defer_to_thread
+from rss_monkey.common.utils import singleton
+
+# TODO: konfigurace logovani
+LOG = logging.getLogger('FeedProcessorClient')
+
+CONFIG_FILE = '/etc/rss_monkey_client.ini'
+
+
+@singleton
+class Config(object):
+    def __init__(self):
+        self.parser = ConfigParser()
+        self.parser.read(CONFIG_FILE)
+
+    def get(self, section, option):
+        return self.parser.get(section, option)
+
+
+@singleton
+class UserConfig(object):
+    def __init__(self):
+        self.path = os.path.expanduser('~/.rss_monkey.ini')
+        self.parser = ConfigParser()
+        self.parser.read(self.path)
+
+    def get(self, section, option):
+        return self.parser.get(section, option)
+
+    def set(self, section, option, value=None):
+        if not self.parser.has_section(section):
+            self.parser.add_section(section)
+
+        self.parser.set(section, option, value)
+
+    def write(self):
+        with open(self.path, 'w') as f:
+            self.parser.write(f)
 
 
 class Task(object):
@@ -57,10 +96,9 @@ class ScheduledTask(object):
 
 
 class ConfigurationWindow(object):
-    salt = None
-
-    def __init__(self, ui_file):
+    def __init__(self, ui_file, salt):
         self._init_window(ui_file)
+        self.salt = salt
 
         self.server_status_task = None
         self.login_status_task = None
@@ -99,10 +137,57 @@ class ConfigurationWindow(object):
 
     @defer.inlineCallbacks
     def on_register_button_clicked(self, widget, *data):
-        pass
+        self.dialog.set_sensitive(False)
+        try:
+            login = self.login_entry.get_text().strip()
+            passwd = self.passwd_entry.get_text().strip()
+
+            self.login_status.set_text('...')
+
+            if not login or not passwd:
+                return
+
+            url = self.server_url_entry.get_text().strip()
+
+            if not url:
+                return
+
+            pwdhash = self._create_passwd_hash(passwd)
+
+            try:
+                yield RssClient.register_user(url, login, pwdhash)
+
+                print 'User registered:', login
+                self.login_status.set_text(' OK')
+            except Exception as e:
+                print e.__class__.__name__, str(e)
+                self.login_status.set_text('ERR')
+        finally:
+            self.dialog.set_sensitive(True)
 
     def on_ok_button_clicked(self, widget, *data):
-        pass
+        login = self.login_entry.get_text().strip()
+        passwd = self.passwd_entry.get_text().strip()
+        url = self.server_url_entry.get_text().strip()
+
+        if not login:
+            self._show_error_dialog('Není zadán login.')
+
+        if not passwd:
+            self._show_error_dialog('Není zadáno heslo.')
+
+        if not url:
+            self._show_error_dialog('Není zadána URL serveru.')
+
+        pwdhash = self._create_passwd_hash(passwd)
+
+        cfg = UserConfig()
+        cfg.set('user', 'login', login)
+        cfg.set('user', 'passwd', pwdhash)
+        cfg.set('server', 'url', url)
+        cfg.write()
+
+        self.close()
 
     @defer.inlineCallbacks
     def on_server_url_entry_changed(self, widget, *data):
@@ -156,16 +241,24 @@ class ConfigurationWindow(object):
         return RssClient.test_connection(url)
 
     def _check_credentials(self, url, login, passwd):
-        #pwdhash = self._create_passwd_hash(passwd)
+        pwdhash = self._create_passwd_hash(passwd)
         client = RssClient()
-        client.connect(url, login, passwd) # HACK!!!
-        return client.get_channels() # do request with credentials
+        client.connect(url, login, pwdhash)
+        return client.get_channels()  # do request with credentials
 
     def _create_passwd_hash(self, passwd):
+        assert self.salt, 'salt not set'
         from hashlib import sha256
-        assert self.salt
         digest = sha256(self.salt + passwd)
         return digest.hexdigest()
+
+    def _show_error_dialog(self, message):
+        dialog = gtk.MessageDialog(self.dialog,
+                                   gtk.DIALOG_DESTROY_WITH_PARENT,
+                                   gtk.MESSAGE_ERROR,
+                                   gtk.BUTTONS_CLOSE, message)
+        dialog.run()
+        dialog.destroy()
 
 
 class MainWindow(object):
@@ -203,7 +296,9 @@ class MainWindow(object):
     def on_config_mi_activate(self, widget, *data):
         self.main_window.set_sensitive(False)
         try:
-            window = ConfigurationWindow('ui/configuration.glade')
+            ui_file = Config().get('ui', 'config_dialog_path')
+            salt = Config().get('global', 'salt')
+            window = ConfigurationWindow(ui_file, salt)
             window.show()
         finally:
             self.main_window.set_sensitive(True)
@@ -228,7 +323,8 @@ class MainWindow(object):
 
 
 def main():
-    main_window = MainWindow('ui/main.glade')
+    ui_file = Config().get('ui', 'main_window_path')
+    main_window = MainWindow(ui_file)
     main_window.show()
 
     reactor.run()

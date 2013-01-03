@@ -70,8 +70,17 @@ class RssClient(object):
             raise ValueError('Client is not connected')
 
     @staticmethod
+    @defer.inlineCallbacks
     def register_user(url, login, passwd):
-        pass
+        url, p = RssClient._get_url_and_protocol(url, 'registration')
+
+        proxy = JsonRpcProxy(IRegistrationService)
+        proxy._connect(url, protocol=p)
+        try:
+            yield proxy.register_user(login, passwd)
+        except Exception as e:
+            print e.__class__.__name__, str(e)
+            raise ValueError('xxx')
 
     @staticmethod
     @defer.inlineCallbacks

@@ -5,6 +5,20 @@ from threading import Lock
 from twisted.internet import threads
 
 
+def singleton(cls):
+
+    instances = {}
+
+    def getinstance():
+        """
+        Klasicka 'getinstance' metoda singletonu.
+        """
+        if cls not in instances:
+            instances[cls] = cls()
+        return instances[cls]
+    return getinstance
+
+
 def defer_to_thread(fnc):
     def wrapper(*args, **kwargs):
         return threads.deferToThread(fnc, *args, **kwargs)

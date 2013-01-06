@@ -12,7 +12,7 @@ from zope.interface import Interface
 from zope.interface.interface import Method
 
 
-LOG = logging.getLogger()
+LOG = logging.getLogger(__name__)
 
 
 class WebClientContextFactory(ClientContextFactory):

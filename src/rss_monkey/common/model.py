@@ -8,7 +8,6 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm.session import Session
 from sqlalchemy.ext.declarative import declarative_base
 
-logging.basicConfig()
 LOG = logging.getLogger(__name__)
 
 

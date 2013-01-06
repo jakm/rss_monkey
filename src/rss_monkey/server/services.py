@@ -10,7 +10,6 @@ from rss_monkey.common.utils import log_function_call
 from rss_monkey.server.interfaces import (IRegistrationService, IRssService,
                                           ITestService)
 
-logging.basicConfig()
 LOG = logging.getLogger(__name__)
 
 

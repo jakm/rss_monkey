@@ -10,7 +10,7 @@ from rss_monkey.client.proxy import JsonRpcProxy
 from rss_monkey.server.interfaces import (ITestService, IRegistrationService,
                                           IRssService)
 
-LOG = logging.getLogger()
+LOG = logging.getLogger(__name__)
 
 
 class Channel(object):

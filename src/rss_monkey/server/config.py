@@ -9,7 +9,6 @@ from twisted.internet import reactor
 
 CONFIG_FILE = '/etc/rss_monkey_server.ini'
 
-logging.basicConfig()
 LOG = logging.getLogger(__name__)
 
 
@@ -25,9 +24,7 @@ class AppConfig(PythonConfig):
         if filename == '' or filename == 'stdout':
             filename = None
 
-        # FIXME: fix logging configuration!!!
-        #logging.basicConfig(format=format, level=level, filename=filename)
-        logging.root.setLevel(level)
+        logging.basicConfig(format=format, level=level, filename=filename)
 
     @Object(lazy_init=True)
     def db_config(self):

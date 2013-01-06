@@ -6,7 +6,7 @@ from twisted.application import service
 from rss_monkey.common import context
 from rss_monkey.server import config
 
-LOG = logging.getLogger('FeedProcessorService')
+LOG = logging.getLogger(__name__)
 
 context.install_context(config.AppConfig())
 

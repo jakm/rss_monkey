@@ -34,8 +34,7 @@ def log_function_call(level=logging.DEBUG, log_params=True, log_result=True):
     def decorator(fnc):
         if logging.root.level <= level:
             def logging_wrapper(*args, **kwargs):
-                module_name = fnc.__module__
-                logger = logging.getLogger(module_name)
+                logger = logging.getLogger(fnc.__module__)
                 if logger.level == logging.NOTSET:
                     logger.setLevel(logging.root.level)
 

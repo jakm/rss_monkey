@@ -37,6 +37,7 @@ class RegistrationService(object):
             self.db.store(user)
             self.db.commit()
         except Exception:
+            self.db.rollback()
             raise ValueError('Registration failed')
 
 

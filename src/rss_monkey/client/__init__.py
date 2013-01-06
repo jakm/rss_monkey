@@ -1,5 +1,7 @@
 # -*- coding: utf8 -*-
 
+import logging
+
 from urllib2 import urlparse
 
 from twisted.internet import defer
@@ -8,8 +10,7 @@ from rss_monkey.client.proxy import JsonRpcProxy
 from rss_monkey.server.interfaces import (ITestService, IRegistrationService,
                                           IRssService)
 
-class RssClientError(Exception):
-    pass
+LOG = logging.getLogger()
 
 
 class Channel(object):
@@ -65,6 +66,11 @@ class RssClient(object):
 
         return self.rpc_proxy.get_channels()
 
+    def add_channel(self, url):
+        self._check_connected()
+
+        return self.rpc_proxy.add_channel(url)
+
     def _check_connected(self):
         if not self.is_connected:
             raise ValueError('Client is not connected')
@@ -79,8 +85,9 @@ class RssClient(object):
         try:
             yield proxy.register_user(login, passwd)
         except Exception as e:
-            print e.__class__.__name__, str(e)
-            raise ValueError('xxx')
+            LOG.warning('Exception when registering user: %s:%s',
+                        e.__class__.__name__, str(e))
+            raise ValueError('User registration failed')
 
     @staticmethod
     @defer.inlineCallbacks

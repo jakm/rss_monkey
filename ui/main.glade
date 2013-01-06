@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <!-- interface-requires gtk+ 3.0 -->
-  <object class="GtkListStore" id="entries_liststore"/>
+  <object class="GtkListStore" id="channels_liststore"/>
   <object class="GtkImage" id="image1">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -12,7 +12,6 @@
     <property name="can_focus">False</property>
     <property name="stock">gtk-remove</property>
   </object>
-  <object class="GtkListStore" id="channels_liststore"/>
   <object class="GtkImage" id="image3">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -23,6 +22,7 @@
     <property name="can_focus">False</property>
     <property name="stock">gtk-disconnect</property>
   </object>
+  <object class="GtkListStore" id="entries_liststore"/>
   <object class="GtkImage" id="image5">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -69,6 +69,7 @@
                       <object class="GtkImageMenuItem" id="disconnect_mi">
                         <property name="label" translatable="yes">Odpojit</property>
                         <property name="visible">True</property>
+                        <property name="sensitive">False</property>
                         <property name="can_focus">False</property>
                         <property name="image">image4</property>
                         <property name="use_stock">False</property>
@@ -119,6 +120,7 @@
                       <object class="GtkImageMenuItem" id="new_channel_mi">
                         <property name="label" translatable="yes">Nový kanál</property>
                         <property name="visible">True</property>
+                        <property name="sensitive">False</property>
                         <property name="can_focus">False</property>
                         <property name="image">image1</property>
                         <property name="use_stock">False</property>
@@ -129,6 +131,7 @@
                       <object class="GtkImageMenuItem" id="del_channel_mi">
                         <property name="label" translatable="yes">Odstranit kanál</property>
                         <property name="visible">True</property>
+                        <property name="sensitive">False</property>
                         <property name="can_focus">False</property>
                         <property name="image">image2</property>
                         <property name="use_stock">False</property>
@@ -145,34 +148,11 @@
                       <object class="GtkImageMenuItem" id="refresh_mi">
                         <property name="label" translatable="yes">Obnovit</property>
                         <property name="visible">True</property>
+                        <property name="sensitive">False</property>
                         <property name="can_focus">False</property>
                         <property name="image">image6</property>
                         <property name="use_stock">False</property>
                         <signal name="activate" handler="on_refresh_mi_activate" swapped="no"/>
-                      </object>
-                    </child>
-                  </object>
-                </child>
-              </object>
-            </child>
-            <child>
-              <object class="GtkMenuItem" id="help_menuitem">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="label" translatable="yes">_Nápověda</property>
-                <property name="use_underline">True</property>
-                <child type="submenu">
-                  <object class="GtkMenu" id="help_menu">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <child>
-                      <object class="GtkImageMenuItem" id="about_mi">
-                        <property name="label">gtk-about</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="use_underline">True</property>
-                        <property name="use_stock">True</property>
-                        <signal name="activate" handler="on_about_mi_activate" swapped="no"/>
                       </object>
                     </child>
                   </object>

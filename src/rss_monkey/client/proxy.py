@@ -1,13 +1,18 @@
 # -*- coding: utf8 -*-
 
-import new
 import base64
+import logging
+import new
 from fastjsonrpc.client import Proxy
 from fastjsonrpc.jsonrpc import VERSION_2
 from twisted.internet import reactor
 from twisted.internet.ssl import ClientContextFactory
 from twisted.web.client import Agent
-from zope.interface import Interface, interface
+from zope.interface import Interface
+from zope.interface.interface import Method
+
+
+LOG = logging.getLogger()
 
 
 class WebClientContextFactory(ClientContextFactory):
@@ -28,36 +33,32 @@ class JsonRpcProxy(object):
             raise ValueError('Parameter has to be the Interface.')
         self.interface = interface
 
-        self._extend_with_interface_methods()
-
-    def _extend_with_interface_methods(self):
         method_names = [name for name in list(self.interface)
-                        if isinstance(self.interface.get(name), interface.Method)]
+                        if isinstance(self.interface.get(name), Method)]
 
-        def wrapper(method_name, *args, **kw):
-            if self.proxy is None:
-                raise ValueError('Proxy is not set')
-            return self.proxy.callRemote(method_name, *args, **kw)
+        def create_method(method_name):
+            # create function object
+            def wrapper(self_, *args, **kw):
+                if self_.proxy is None:
+                    raise ValueError('Proxy is not set.')
 
-        def wrap_method(method_name):
-            def wrapped(self, *args, **kw):
-                return wrapper(method_name, *args, **kw)
-            wrapped.__name__ = method_name
-            return wrapped
+                return self.proxy.callRemote(method_name, *args, **kw)
+            wrapper.__name__ = method_name
 
-        for method_name in method_names:
-            method = wrap_method(method_name)
-
-            method.__doc__ = 'Warning! Method wrapper returns deferred!\n'
             doc = self.interface.get(method_name).getDoc()
             if doc:
-                method.__doc__ += doc
+                wrapper.__doc__ = (
+                    "\nWarning! This wrapper method returns a Deferred!\n\n"
+                    + doc)
 
-            self._add_method(method, method_name)
+            # bound it with instance
+            method = new.instancemethod(wrapper, self, self.__class__)
 
-    def _add_method(self, func, method_name):
-        method = new.instancemethod(func, self, self.__class__)
-        setattr(self, method_name, method)
+            return method
+
+        for method_name in method_names:
+            method = create_method(method_name)
+            setattr(self, method_name, method)
 
     def _connect(self, url, login=None, passwd=None, protocol='http'):
         """

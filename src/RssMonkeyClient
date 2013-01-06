@@ -10,15 +10,16 @@ gtk2reactor.install()
 
 import logging
 import os.path
+import sys
 
-from ConfigParser import ConfigParser
+from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
 
 from twisted.internet import defer
 from twisted.internet import reactor
 from twisted.internet import task
 
 from rss_monkey.client import RssClient
-from rss_monkey.common.utils import singleton
+from rss_monkey.common.utils import singleton, defer_to_thread
 
 # TODO: konfigurace logovani
 LOG = logging.getLogger('FeedProcessorClient')
@@ -29,7 +30,7 @@ CONFIG_FILE = '/etc/rss_monkey_client.ini'
 @singleton
 class Config(object):
     def __init__(self):
-        self.parser = ConfigParser()
+        self.parser = RawConfigParser()
         self.parser.read(CONFIG_FILE)
 
     def get(self, section, option):
@@ -40,7 +41,7 @@ class Config(object):
 class UserConfig(object):
     def __init__(self):
         self.path = os.path.expanduser('~/.rss_monkey.ini')
-        self.parser = ConfigParser()
+        self.parser = RawConfigParser()
         self.parser.read(self.path)
 
     def get(self, section, option):
@@ -67,6 +68,8 @@ class Task(object):
         self._kw = kw
 
     def run(self):
+        LOG.debug('Executing %s: %s', self.__class__.__name__, self._fnc.__name__)
+
         d = task.deferLater(reactor, 0, self._fnc, *self._args, **self._kw)
         d.chainDeferred(self.deferred)
 
@@ -86,6 +89,8 @@ class ScheduledTask(object):
         self._kw = kw
 
     def schedule(self, seconds):
+        LOG.debug('Planning %s: %s', self.__class__.__name__, self._fnc.__name__)
+
         d = task.deferLater(reactor, seconds, self._fnc, *self._args, **self._kw)
         d.chainDeferred(self.deferred)
 
@@ -95,13 +100,53 @@ class ScheduledTask(object):
         self.deferred.cancel()
 
 
+def show_error_dialog(parent, message):
+    dialog = gtk.MessageDialog(parent,
+                               gtk.DIALOG_DESTROY_WITH_PARENT,
+                               gtk.MESSAGE_ERROR,
+                               gtk.BUTTONS_CLOSE, message)
+    dialog.run()
+    dialog.destroy()
+
+
+def open_main_window():
+    ui_file = Config().get('ui', 'main_window_path')
+    main_window = MainWindow(ui_file)
+    main_window.show()
+
+
+def open_config_dialog(parent):
+    parent.set_sensitive(False)
+    try:
+        ui_file = Config().get('ui', 'config_dialog_path')
+        salt = Config().get('global', 'salt')
+        dialog = ConfigurationWindow(ui_file, salt)
+        dialog.show()
+    finally:
+        parent.set_sensitive(True)
+
+
+def open_add_channel_dialog(parent):
+    parent.set_sensitive(False)
+    try:
+        ui_file = Config().get('ui', 'add_channel_dialog_path')
+        dialog = AddChannel(ui_file)
+        dialog.show()
+        return dialog
+    finally:
+        parent.set_sensitive(True)
+
+
 class ConfigurationWindow(object):
     def __init__(self, ui_file, salt):
-        self._init_window(ui_file)
         self.salt = salt
 
         self.server_status_task = None
         self.login_status_task = None
+
+        self.passwd_is_hash = False
+
+        self._init_window(ui_file)
 
     def _init_window(self, ui_file):
         self.builder = gtk.Builder()
@@ -117,6 +162,8 @@ class ConfigurationWindow(object):
         self.builder.connect_signals(signals)
 
         self._set_widget_objects()
+
+        self.load_config()
 
         self.dialog.connect('destroy', lambda widget, *data: self.close())
         self.dialog.set_modal(True)
@@ -134,6 +181,25 @@ class ConfigurationWindow(object):
 
     def show(self):
         self.dialog.show()
+
+    def load_config(self):
+        cfg = UserConfig()
+
+        try:
+            url = cfg.get('server', 'url').strip()
+            self.server_url_entry.set_text(url)
+        except (NoOptionError, NoSectionError):
+            pass
+
+        try:
+            login = cfg.get('user', 'login').strip()
+            passwd = cfg.get('user', 'passwd').strip()
+
+            self.login_entry.set_text(login)
+            self.passwd_entry.set_text(passwd)
+            self.passwd_is_hash = True
+        except (NoOptionError, NoSectionError):
+            pass
 
     @defer.inlineCallbacks
     def on_register_button_clicked(self, widget, *data):
@@ -157,10 +223,10 @@ class ConfigurationWindow(object):
             try:
                 yield RssClient.register_user(url, login, pwdhash)
 
-                print 'User registered:', login
+                LOG.info('User registered: %s', login)
                 self.login_status.set_text(' OK')
             except Exception as e:
-                print e.__class__.__name__, str(e)
+                LOG.info('Exception when registering: %s: %s', e.__class__.__name__, str(e))
                 self.login_status.set_text('ERR')
         finally:
             self.dialog.set_sensitive(True)
@@ -171,13 +237,13 @@ class ConfigurationWindow(object):
         url = self.server_url_entry.get_text().strip()
 
         if not login:
-            self._show_error_dialog('Není zadán login.')
+            show_error_dialog(self.dialog, 'Není zadán login.')
 
         if not passwd:
-            self._show_error_dialog('Není zadáno heslo.')
+            show_error_dialog(self.dialog, 'Není zadáno heslo.')
 
         if not url:
-            self._show_error_dialog('Není zadána URL serveru.')
+            show_error_dialog(self.dialog, 'Není zadána URL serveru.')
 
         pwdhash = self._create_passwd_hash(passwd)
 
@@ -202,10 +268,10 @@ class ConfigurationWindow(object):
         try:
             yield self.server_status_task.schedule(1)
 
-            print 'Server URL: OK'
+            LOG.debug('Server URL: OK')
             self.server_status.set_text(' OK')
         except Exception as e:
-            print e.__class__.__name__, str(e)
+            LOG.debug('Exception when verifing URL: %s: %s', e.__class__.__name__, str(e))
             self.server_status.set_text(' X ')
 
     @defer.inlineCallbacks
@@ -217,6 +283,9 @@ class ConfigurationWindow(object):
             self.login_status_task.cancel()
 
         self.login_status.set_text('...')
+
+        if not passwd:
+            self.passwd_is_hash = False
 
         if not login or not passwd:
             return
@@ -231,10 +300,10 @@ class ConfigurationWindow(object):
         try:
             yield self.login_status_task.schedule(1)
 
-            print 'Credentials: OK'
+            LOG.debug('Credentials: OK')
             self.login_status.set_text(' OK')
         except Exception as e:
-            print e.__class__.__name__, str(e)
+            LOG.debug('Exception when verifing credentials: %s: %s', e.__class__.__name__, str(e))
             self.login_status.set_text(' X ')
 
     def _check_connection(self, url):
@@ -248,32 +317,79 @@ class ConfigurationWindow(object):
 
     def _create_passwd_hash(self, passwd):
         assert self.salt, 'salt not set'
+
+        if self.passwd_is_hash:
+            return passwd
+
         from hashlib import sha256
         digest = sha256(self.salt + passwd)
         return digest.hexdigest()
 
-    def _show_error_dialog(self, message):
-        dialog = gtk.MessageDialog(self.dialog,
-                                   gtk.DIALOG_DESTROY_WITH_PARENT,
-                                   gtk.MESSAGE_ERROR,
-                                   gtk.BUTTONS_CLOSE, message)
-        dialog.run()
-        dialog.destroy()
+
+class AddChannel(object):
+    def __init__(self, ui_file):
+        self.confirmed = False
+        self.url = None
+
+        self._init_window(ui_file)
+
+    def _init_window(self, ui_file):
+        self.builder = gtk.Builder()
+        self.builder.add_from_file(ui_file)
+
+        signals = {'on_ok_bnt_clicked': self.on_ok_btn_clicked,
+                   'on_cancel_bnt_clicked': lambda widget, *data: self.close()}
+
+        self.builder.connect_signals(signals)
+
+        self._set_widget_objects()
+
+        self.dialog.connect('destroy', lambda widget, *data: self.close())
+        self.dialog.set_modal(True)
+
+    def _set_widget_objects(self):
+        widgets = ('dialog', 'url_entry')
+        go = self.builder.get_object
+        for widget_name in widgets:
+            setattr(self, widget_name, go(widget_name))
+
+    def close(self):
+        self.dialog.hide()
+        self.dialog.destroy()
+
+    def show(self):
+        self.dialog.run()
+
+    def on_ok_btn_clicked(self, widget, *data):
+        url = self.url_entry.get_text().strip()
+
+        if not url:
+            show_error_dialog(self.dialog, 'Není zadána URL adresa.')
+            return
+
+        self.url = url
+        self.confirmed = True
+
+        self.close()
 
 
 class MainWindow(object):
     def __init__(self, ui_file):
+        self.client = None
+
+        self._init_window(ui_file)
+
+    def _init_window(self, ui_file):
         self.builder = gtk.Builder()
         self.builder.add_from_file(ui_file)
 
-        signals = {'on_quit_mi_activate': gtk.main_quit,
+        signals = {'on_quit_mi_activate': lambda widget, *data: self.exit(),
                    'on_connect_mi_activate': self.on_connect_mi_activate,
                    'on_disconnect_mi_activate': self.on_disconnect_mi_activate,
                    'on_config_mi_activate': self.on_config_mi_activate,
                    'on_new_channel_mi_activate': self.on_new_channel_mi_activate,
                    'on_del_channel_mi_activate': self.on_del_channel_mi_activate,
-                   'on_refresh_mi_activate': self.on_refresh_mi_activate,
-                   'on_about_mi_activate': self.on_about_mi_activate}
+                   'on_refresh_mi_activate': self.on_refresh_mi_activate}
 
         self.builder.connect_signals(signals)
 
@@ -282,10 +398,16 @@ class MainWindow(object):
         self.main_window.connect('destroy', lambda widget, *data: self.exit())
 
     def _set_widget_objects(self):
-        widgets = ('main_window',)
+        widgets = ('main_window', 'connect_mi', 'disconnect_mi',
+                   'new_channel_mi', 'del_channel_mi', 'refresh_mi',
+                   'progress_spinner', 'progress_label')
         go = self.builder.get_object
         for widget_name in widgets:
             setattr(self, widget_name, go(widget_name))
+
+    @property
+    def is_connected(self):
+        return self.client is not None
 
     def show(self):
         self.main_window.show_all()
@@ -294,38 +416,159 @@ class MainWindow(object):
         reactor.stop()
 
     def on_config_mi_activate(self, widget, *data):
-        self.main_window.set_sensitive(False)
-        try:
-            ui_file = Config().get('ui', 'config_dialog_path')
-            salt = Config().get('global', 'salt')
-            window = ConfigurationWindow(ui_file, salt)
-            window.show()
-        finally:
-            self.main_window.set_sensitive(True)
+        open_config_dialog(self.main_window)
 
+    @defer.inlineCallbacks
     def on_connect_mi_activate(self, widget, *data):
-        pass
+        LOG.debug('Connecting stared')
+        res = yield self.connect()
+        if res:
+            LOG.debug('Connecting done')
 
+    @defer.inlineCallbacks
     def on_disconnect_mi_activate(self, widget, *data):
-        pass
+        LOG.debug('Disconnecting started')
+        try:
+            yield self.disconnect()
+        except:
+            return
+        LOG.debug('Disconnecting done')
 
+    @defer.inlineCallbacks
     def on_new_channel_mi_activate(self, widget, *data):
-        pass
+        assert self.is_connected, 'not connected'
 
+        LOG.debug('New add channel dialog')
+
+        dialog = open_add_channel_dialog(self.main_window)
+
+        if not dialog.confirmed:
+            LOG.debug('User cancelled dialog')
+            return
+
+        assert dialog.url, 'URL not set'
+        LOG.debug('Adding channel %s', dialog.url)
+
+        self.do_progress(True, 'Přidávám kanál ...')
+        try:
+            try:
+                yield self.client.add_channel(dialog.url)
+            except:
+                raise
+
+            yield self.set_channels()
+        except Exception as e:
+            LOG.warning('Exception when adding channel: %s: %s', e.__class__.__name__, str(e))
+            self.do_progress(False, '...')
+
+        # TODO: progress
+
+    @defer.inlineCallbacks
     def on_del_channel_mi_activate(self, widget, *data):
         pass
 
+    @defer.inlineCallbacks
     def on_refresh_mi_activate(self, widget, *data):
         pass
 
+    @defer.inlineCallbacks
     def on_about_mi_activate(self, widget, *data):
         pass
 
+    @defer.inlineCallbacks
+    def connect(self):
+        assert not self.is_connected, 'connected'
+
+        self.do_progress(True, 'Připojuji ...')
+        try:
+            url, login, passwd = yield self.load_user_config()
+            LOG.debug('URL: %s, login: %s, passwd: %s', url, login, passwd)
+
+            self.client = RssClient()
+            self.client.connect(url, login, passwd)
+
+            LOG.debug('RssClient created')
+
+            yield self.set_channels()
+
+            self.connect_mi.set_sensitive(False)
+            self.disconnect_mi.set_sensitive(True)
+            self.new_channel_mi.set_sensitive(True)
+            self.del_channel_mi.set_sensitive(True)
+            self.refresh_mi.set_sensitive(True)
+        except Exception as e:
+            LOG.warning('Exception when connecting: %s: %s', e.__class__.__name__, str(e))
+
+            show_error_dialog(self.main_window, 'Nelze se připojit - zkontrolujte nastavení')
+
+            defer.returnValue(False)
+        finally:
+            self.do_progress(False, '...')
+
+        defer.returnValue(True)
+
+    def disconnect(self):
+        assert self.is_connected, 'not connected'
+
+        self.do_progress(True, 'Odpojuji ...')
+        try:
+            self.client = None
+
+            self.connect_mi.set_sensitive(True)
+            self.disconnect_mi.set_sensitive(False)
+            self.new_channel_mi.set_sensitive(False)
+            self.del_channel_mi.set_sensitive(False)
+            self.refresh_mi.set_sensitive(False)
+
+            print 'clear channels_treeview'
+            print 'clear entries_treeview'
+            print 'clear entry_textview'
+        finally:
+            self.do_progress(False, '...')
+
+    @defer.inlineCallbacks
+    def set_channels(self):
+        channels = yield self.client.get_channels()
+
+        print channels
+
+    @defer_to_thread
+    def load_user_config(self):
+        cfg = UserConfig()
+
+        try:
+            url = cfg.get('server', 'url').strip()
+            login = cfg.get('user', 'login').strip()
+            passwd = cfg.get('user', 'passwd').strip()
+
+            return url, login, passwd
+        except (NoOptionError, NoSectionError):
+            raise ValueError('Cannot load user configuration')
+
+    def do_progress(self, start, message):
+        if start:
+            self.progress_spinner.start()
+        else:
+            self.progress_spinner.stop()
+
+        self.progress_label.set_text(message)
+
+
+def setup_logging():
+    cfg = Config()
+    format = cfg.get('logging', 'format')
+    level = int(cfg.get('logging', 'level'))
+    filename = cfg.get('logging', 'filename')
+    if filename == '' or filename == 'stdout':
+        filename = None
+
+    logging.basicConfig(format=format, level=level, filename=filename)
+
 
 def main():
-    ui_file = Config().get('ui', 'main_window_path')
-    main_window = MainWindow(ui_file)
-    main_window.show()
+    setup_logging()
+
+    open_main_window()
 
     reactor.run()
 

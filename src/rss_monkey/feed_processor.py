@@ -31,7 +31,7 @@ class FeedParser(object):
             'url': feed.url,
             'title': feed.channel.title,
             'link': feed.channel.link,
-            'description': feed.channel.description,
+            'description': feed.channel.get('description', None),
             'modified': None
         }
 

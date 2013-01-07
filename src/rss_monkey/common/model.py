@@ -110,12 +110,12 @@ class User(Base):
         return entry
 
     def is_entry_read(self, entry):
-        is_read = (Session.object_session(self)
+        row = (Session.object_session(self)
                           .query(user_entries_table.c.read)
                           .filter(user_entries_table.c.user_id == self.id,
                                   user_entries_table.c.entry_id == entry.id)
                           .one())
-        print is_read
+        is_read = row[0]
         return bool(is_read)
 
     def set_entry_read(self, entry, read):

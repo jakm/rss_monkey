@@ -94,8 +94,7 @@ class FeedProcessor(object):
 
     @log_function_call()
     def schedule_jobs(self):
-        if self.task:
-            raise Exception('Task is planned') # TODO: konkretni vyjimka
+        assert not self.task, 'task planned'
 
         self.task = task.LoopingCall(self.process_feeds)
         return self._start_task()
@@ -108,7 +107,10 @@ class FeedProcessor(object):
     @log_function_call()
     def stop_jobs(self):
         if self.task and self.task.running:
+            LOG.info('Stopping task')
             self.task.stop()
+        else:
+            LOG.info('Task to stop not running')
 
     @log_function_call()
     def process_feeds(self):
@@ -124,6 +126,7 @@ class FeedProcessor(object):
 
     @log_function_call()
     def _start_task(self):
+        LOG.info('Starting task (interval: %d', self.download_interval)
         return self.task.start(self.download_interval)
 
     @log_function_call()
@@ -132,6 +135,7 @@ class FeedProcessor(object):
 
     @log_function_call()
     def process_feed(self, feed_id):
+        LOG.debug('Processing feed (feed_id: %d', feed_id)
         feed = self.get_feed_from_db(feed_id)
         data = self.download_feed(feed)
         self.update_feed(feed, data)
@@ -193,4 +197,5 @@ class FeedProcessorRpcServer(JSONRPCServer):
 
     @log_function_call()
     def jsonrpc_reload_feeds(self):
+        LOG.info('Reschedule task')
         self.feed_processor.reschedule()

@@ -13,35 +13,6 @@ from rss_monkey.server.interfaces import (ITestService, IRegistrationService,
 LOG = logging.getLogger(__name__)
 
 
-class Channel(object):
-    _id = None
-    url = None
-    title = None
-    description = None
-    link = None
-    modified = None
-
-    def get_entries(self):
-        pass
-
-
-class Entry(object):
-    _id = None
-    _parent = None
-    title = None
-    summary = None
-    link = None
-    date = None
-
-    @property
-    def read(self):
-        pass
-
-    @read.setter
-    def read(self, value):
-        pass
-
-
 class RssClient(object):
     def __init__(self):
         self._is_connected = False
@@ -69,7 +40,32 @@ class RssClient(object):
     def add_channel(self, url):
         self._check_connected()
 
-        return self.rpc_proxy.add_channel(url)
+        self.rpc_proxy.add_channel(url)
+
+    def remove_channel(self, channel_id):
+        self._check_connected()
+
+        self.rpc_proxy.remove_channel(channel_id)
+
+    def has_unread_entries(self, channel_id):
+        self._check_connected()
+
+        return self.rpc_proxy.has_unread_entries(channel_id)
+
+    def get_unread_entries(self, channel_id):
+        self._check_connected()
+
+        return self.rpc_proxy.get_unread_entries(channel_id)
+
+    def get_entries(self, channel_id):
+        self._check_connected()
+
+        return self.rpc_proxy.get_entries(channel_id)
+
+    def set_entry_read(self, entry_id, read):
+        self._check_connected()
+
+        self.rpc_proxy.set_entry_read(entry_id, read)
 
     def _check_connected(self):
         if not self.is_connected:

@@ -10,7 +10,6 @@ gtk2reactor.install()
 
 import logging
 import os.path
-import sys
 
 from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
 
@@ -376,6 +375,7 @@ class AddChannel(object):
 class MainWindow(object):
     def __init__(self, ui_file):
         self.client = None
+        self.entry_cache = {}
 
         self._init_window(ui_file)
 
@@ -389,7 +389,9 @@ class MainWindow(object):
                    'on_config_mi_activate': self.on_config_mi_activate,
                    'on_new_channel_mi_activate': self.on_new_channel_mi_activate,
                    'on_del_channel_mi_activate': self.on_del_channel_mi_activate,
-                   'on_refresh_mi_activate': self.on_refresh_mi_activate}
+                   'on_refresh_mi_activate': self.on_refresh_mi_activate,
+                   'on_channels_treeview_cursor_changed': self.on_channels_treeview_cursor_changed,
+                   'on_entries_treeview_cursor_changed': self.on_entries_treeview_cursor_changed}
 
         self.builder.connect_signals(signals)
 
@@ -400,7 +402,10 @@ class MainWindow(object):
     def _set_widget_objects(self):
         widgets = ('main_window', 'connect_mi', 'disconnect_mi',
                    'new_channel_mi', 'del_channel_mi', 'refresh_mi',
-                   'progress_spinner', 'progress_label')
+                   'progress_spinner', 'progress_label',
+                   'channels_treeview', 'entries_treeview',
+                   'channels_liststore', 'entries_liststore',
+                   'summary_textbuffer')
         go = self.builder.get_object
         for widget_name in widgets:
             setattr(self, widget_name, go(widget_name))
@@ -454,26 +459,66 @@ class MainWindow(object):
             try:
                 yield self.client.add_channel(dialog.url)
             except:
-                raise
+                raise # TODO: zbytecne prehazovani vyjimky
 
-            yield self.set_channels()
+            channels = yield self.get_channels()
+            self.show_channels(channels)
         except Exception as e:
             LOG.warning('Exception when adding channel: %s: %s', e.__class__.__name__, str(e))
-            self.do_progress(False, '...')
 
-        # TODO: progress
+            self.do_progress(False, '...')
+        else:
+            self.do_progress(False, 'Kanál přidán ...')
 
     @defer.inlineCallbacks
     def on_del_channel_mi_activate(self, widget, *data):
-        pass
+        assert self.is_connected, 'not connected'
+
+        channel_id = self.get_selected_channel_id()
+
+        self.do_progress(True, 'Odstraňuji kanál ...')
+        try:
+            yield self.client.remove_channel(channel_id)
+        except Exception as e:
+            LOG.warning('Exception when removing channel: %s: %s', e.__class__.__name__, str(e))
+
+            show_error_dialog(self.main_window, 'Nastala chyba - zkuste restartovat aplikaci')
+
+            self.do_progress(False, '...')
+        else:
+            self.do_progress(False, 'Kanál odstraněn ...')
+
+        self.remove_selected_channel()
 
     @defer.inlineCallbacks
     def on_refresh_mi_activate(self, widget, *data):
-        pass
+        assert self.is_connected, 'not connected'
+
+        self.do_progress(True, 'Obnovuji pohled ...')
+        try:
+            yield self.refresh_all()
+        except Exception as e:
+            LOG.warning('Exception when connecting: %s: %s', e.__class__.__name__, str(e))
+
+            show_error_dialog(self.main_window, 'Nastala chyba - zkuste restartovat aplikaci')
+
+            self.do_progress(False, '...')
+        else:
+            self.do_progress(False, 'Pohled obnoven ...')
 
     @defer.inlineCallbacks
-    def on_about_mi_activate(self, widget, *data):
-        pass
+    def on_channels_treeview_cursor_changed(self, widget, *data):
+        channel_id = self.get_selected_channel_id()
+
+        entries = yield self.get_entries(channel_id)
+
+        yield self.show_entries(entries)
+
+    def on_entries_treeview_cursor_changed(self, widget, *data):
+        channel_id = self.get_selected_channel_id()
+        entry_id = self.get_selected_entry_id()
+
+        self.show_summary(channel_id, entry_id)
 
     @defer.inlineCallbacks
     def connect(self):
@@ -489,7 +534,7 @@ class MainWindow(object):
 
             LOG.debug('RssClient created')
 
-            yield self.set_channels()
+            yield self.refresh_all()
 
             self.connect_mi.set_sensitive(False)
             self.disconnect_mi.set_sensitive(True)
@@ -499,11 +544,13 @@ class MainWindow(object):
         except Exception as e:
             LOG.warning('Exception when connecting: %s: %s', e.__class__.__name__, str(e))
 
+            self.client = None
+
             show_error_dialog(self.main_window, 'Nelze se připojit - zkontrolujte nastavení')
 
             defer.returnValue(False)
         finally:
-            self.do_progress(False, '...')
+            self.do_progress(False, 'Připojeno ...')
 
         defer.returnValue(True)
 
@@ -520,17 +567,114 @@ class MainWindow(object):
             self.del_channel_mi.set_sensitive(False)
             self.refresh_mi.set_sensitive(False)
 
-            print 'clear channels_treeview'
-            print 'clear entries_treeview'
-            print 'clear entry_textview'
+            self.clear_all()
         finally:
-            self.do_progress(False, '...')
+            self.do_progress(False, 'Odpojeno ...')
 
     @defer.inlineCallbacks
-    def set_channels(self):
+    def refresh_all(self):
+        self.clear_all()
+        channels = yield self.get_channels()
+        self.show_channels(channels)
+
+    @defer.inlineCallbacks
+    def get_channels(self):
+        LOG.debug('Loading channels')
+
         channels = yield self.client.get_channels()
 
-        print channels
+        LOG.debug('Count of channels: %d', len(channels))
+
+        defer.returnValue(channels)
+
+    def show_channels(self, channels):
+        self.clear_channels()
+
+        for channel in channels:
+            channel_id = channel['id']
+            channel_url = channel['url']
+            channel_title = channel['title']
+            if not channel_title:
+                channel_title = '[Nenačteno]'
+            row = (channel_id, channel_url, channel_title)
+            self.channels_liststore.append(row)
+
+    def get_selected_channel_id(self):
+        selection = self.channels_treeview.get_selection()
+        tree_iter = selection.get_selected()[1]
+
+        return self.channels_liststore.get(tree_iter, 0)[0]
+
+    @defer.inlineCallbacks
+    def get_entries(self, channel_id):
+        LOG.debug('Loading entries (channel_id: %d)', channel_id)
+
+        entries = yield self.client.get_entries(channel_id)
+
+        cache = self.entry_cache.setdefault(channel_id, {})
+
+        for entry in entries:
+            entry_id = entry['id']
+
+            if entry_id not in cache:
+                cache[entry_id] = entry
+
+        LOG.debug('Count of entries: %d', len(cache))
+
+        defer.returnValue(cache)
+
+    @defer_to_thread
+    def show_entries(self, entries):
+        self.clear_entries()
+        self.clear_summary()
+
+        for entry_id in sorted(entries.keys()):
+            entry = entries[entry_id]
+            row = (entry['id'], entry['title'])
+            self.entries_liststore.append(row)
+
+    def get_selected_entry_id(self):
+        selection = self.entries_treeview.get_selection()
+        tree_iter = selection.get_selected()[1]
+
+        return self.entries_liststore.get(tree_iter, 0)[0]
+
+    def show_summary(self, channel_id, entry_id):
+        cache = self.entry_cache.get(channel_id, None)
+        if not cache:
+            LOG.warning('Empty entry cache (channel_id: %d)', channel_id)
+            return
+
+        entry = cache.get(entry_id, None)
+        if not entry:
+            LOG.warning('Entry not in cache (channel_id: %d, entry_id: %d',
+                        channel_id, entry_id)
+            return
+
+        self.clear_summary()
+
+        summary = entry['summary'].strip()
+        self.summary_textbuffer.set_text(summary)
+
+    def remove_selected_channel(self):
+        selection = self.channels_treeview.get_selection()
+        self.channels_liststore.remove(selection.get_selected()[1])
+
+    def clear_channels(self):
+        self.channels_liststore.clear()
+
+    def clear_entries(self):
+        self.entries_liststore.clear()
+
+    def clear_summary(self):
+        start_iter = self.summary_textbuffer.get_start_iter()
+        end_iter = self.summary_textbuffer.get_end_iter()
+        self.summary_textbuffer.delete(start_iter, end_iter)
+
+    def clear_all(self):
+        self.clear_channels()
+        self.clear_entries()
+        self.clear_summary()
 
     @defer_to_thread
     def load_user_config(self):

@@ -573,6 +573,7 @@ class MainWindow(object):
 
     @defer.inlineCallbacks
     def refresh_all(self):
+        self.entry_cache.clear()
         self.clear_all()
         channels = yield self.get_channels()
         self.show_channels(channels)

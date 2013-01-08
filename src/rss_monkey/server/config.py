@@ -61,24 +61,23 @@ class AppConfig(PythonConfig):
 
         return create_engine(connection_string, **kwargs)
 
-    @Object(lazy_init=True)
-    def db_session_registry(self):
+    @Object(scope.PROTOTYPE, lazy_init=True)
+    def db_session(self):
         LOG.debug('Loading db_session object')
-        from sqlalchemy.orm import scoped_session, sessionmaker
+        from sqlalchemy.orm import sessionmaker
 
         engine = self.db_engine()
 
-        session_factory = sessionmaker(bind=engine)
-        Session = scoped_session(session_factory)
+        Session = sessionmaker(bind=engine)
 
-        return Session
+        return Session()
 
-    @Object(lazy_init=True)
+    @Object(scope.PROTOTYPE, lazy_init=True)
     def db(self):
         LOG.debug('Loading db object')
         from rss_monkey.common.db import Db
         db = Db()
-        db.session_registry = self.db_session_registry()
+        db.session = self.db_session()
         return db
 
     @Object(lazy_init=True)

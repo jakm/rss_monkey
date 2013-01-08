@@ -4,11 +4,7 @@ from rss_monkey.common.utils import log_function_call
 
 
 class Db(object):
-    session_registry = None
-
-    @property
-    def session(self):
-        return self.session_registry()
+    session = None
 
     def load(self, cls, **kwargs):
         return self.session.query(cls).filter_by(**kwargs).one()

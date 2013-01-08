@@ -47,7 +47,7 @@ class RssService(object):
     feed_processor_rpc_port = None
     user_id = None
 
-    @log_function_call()
+    @log_function_call(log_result=False)
     def get_channels(self):
         user = self.db.load(User, id=self.user_id)
         return tuple([{'id': feed.id, 'title': feed.title, 'url': feed.url}
@@ -109,11 +109,11 @@ class RssService(object):
     def has_unread_entries(self, channel_id):
         return len(self.get_unread_entries(self.user_id, channel_id)) > 0
 
-    @log_function_call()
+    @log_function_call(log_result=False)
     def get_unread_entries(self, channel_id, limit=None, offset=None):
         return self._get_entries(self.user_id, channel_id, read=False, limit=limit, offset=offset)
 
-    @log_function_call()
+    @log_function_call(log_result=False)
     def get_entries(self, channel_id, limit=None, offset=None):
         return self._get_entries(self.user_id, channel_id, limit=limit, offset=offset)
 
@@ -129,11 +129,14 @@ class RssService(object):
         try:
             feed = [f for f in user.feeds if f.id == channel_id][0]
         except IndexError:
+            LOG.debug('Feed not found (user_id: %d, channel_id: %d', user_id, channel_id)
             return ()
 
         if limit is None and offset is None:
+            LOG.debug('Using simple get (limit and offset are None)')
             entries = user.get_users_entries(feed=feed, read=read)
         else:
+            LOG.debug('Using complex query (limit: %s, offset: %s', limit, offset)
             q = (self.db.query(FeedEntry)
                         .filter(FeedEntry.id == user_entries_table.c.entry_id,
                                 user_entries_table.c.user_id == user.id,
@@ -145,12 +148,16 @@ class RssService(object):
             if offset is not None:
                 q = q.offset(offset)
 
+            LOG.debug('Query: %s', str(q))
+
             entries = q.all()
 
         if read is not None:
             get_read = lambda e: read
         else:
             get_read = lambda e: user.is_entry_read(e)
+
+        LOG.debug('Result: %d rows', len(entries))
 
         result = []
         for entry in entries:

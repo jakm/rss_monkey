@@ -67,7 +67,6 @@ def log_function_call(function=None, level=logging.DEBUG, log_params=True, log_r
         def waiting_for_func(function):
             return decorator(function)
         return waiting_for_func
-
     else:
         return decorator(function)
 log_function_call.lock = Lock()

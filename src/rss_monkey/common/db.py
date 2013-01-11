@@ -33,10 +33,10 @@ class Db(object):
     def rollback(self):
         self._rollback()
 
-    @log_function_call()
+    @log_function_call
     def _commit(self):
         self.session.commit()
 
-    @log_function_call()
+    @log_function_call
     def _rollback(self):
         self.session.rollback()

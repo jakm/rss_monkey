@@ -514,11 +514,25 @@ class MainWindow(object):
 
         yield self.show_entries(entries)
 
+    @defer.inlineCallbacks
     def on_entries_treeview_cursor_changed(self, widget, *data):
         channel_id = self.get_selected_channel_id()
         entry_id = self.get_selected_entry_id()
 
         self.show_summary(channel_id, entry_id)
+        new_value = self.update_entry_read_value()
+
+        self.do_progress(True, 'Označuji položku jako přečtenou ...')
+        try:
+            yield self.set_entry_read(channel_id, entry_id, new_value)
+        except Exception as e:
+            LOG.warning('Exception when setting entry read: %s: %s', e.__class__.__name__, str(e))
+
+            show_error_dialog(self.main_window, 'Nastala chyba - zkuste restartovat aplikaci')
+
+            self.do_progress(False, '...')
+        else:
+            self.do_progress(False, 'Položka označena jako přečtená ...')
 
     @defer.inlineCallbacks
     def connect(self):
@@ -631,7 +645,7 @@ class MainWindow(object):
 
         for entry_id in sorted(entries.keys()):
             entry = entries[entry_id]
-            row = (entry['id'], entry['title'])
+            row = (entry['id'], entry['title'], entry['read'])
             self.entries_liststore.append(row)
 
     def get_selected_entry_id(self):
@@ -641,21 +655,33 @@ class MainWindow(object):
         return self.entries_liststore.get(tree_iter, 0)[0]
 
     def show_summary(self, channel_id, entry_id):
-        cache = self.entry_cache.get(channel_id, None)
-        if not cache:
-            LOG.warning('Empty entry cache (channel_id: %d)', channel_id)
-            return
-
-        entry = cache.get(entry_id, None)
+        entry = self._get_entry_from_cache(channel_id, entry_id)
         if not entry:
-            LOG.warning('Entry not in cache (channel_id: %d, entry_id: %d',
-                        channel_id, entry_id)
             return
 
         self.clear_summary()
 
         summary = entry['summary'].strip()
         self.summary_textbuffer.set_text(summary)
+
+    def update_entry_read_value(self):
+        selection = self.entries_treeview.get_selection()
+        row_iter = selection.get_selected()[1]
+        current_value = self.entries_liststore.get_value(row_iter, 2)
+        new_value = not current_value
+        self.entries_liststore.set_value(row_iter, 2, new_value)
+        return new_value
+
+    @defer.inlineCallbacks
+    def set_entry_read(self, channel_id, entry_id, read):
+        entry = self._get_entry_from_cache(channel_id, entry_id)
+        if not entry:
+            return
+
+        entry['read'] = read
+
+        LOG.debug('Setting entry read (entry_id: %d, read: %s)', entry_id, read)
+        yield self.client.set_entry_read(entry_id, read)
 
     def remove_selected_channel(self):
         selection = self.channels_treeview.get_selection()
@@ -697,6 +723,20 @@ class MainWindow(object):
             self.progress_spinner.stop()
 
         self.progress_label.set_text(message)
+
+    def _get_entry_from_cache(self, channel_id, entry_id):
+        cache = self.entry_cache.get(channel_id, None)
+        if not cache:
+            LOG.warning('Empty entry cache (channel_id: %d)', channel_id)
+            return
+
+        entry = cache.get(entry_id, None)
+        if not entry:
+            LOG.warning('Entry not in cache (channel_id: %d, entry_id: %d',
+                        channel_id, entry_id)
+            return
+
+        return entry
 
 
 def setup_logging():

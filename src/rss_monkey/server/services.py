@@ -16,7 +16,7 @@ LOG = logging.getLogger(__name__)
 class TestService(object):
     implements(ITestService)
 
-    @log_function_call()
+    @log_function_call
     def test(self):
         return 'OK'
 
@@ -26,7 +26,7 @@ class RegistrationService(object):
 
     db = None
 
-    @log_function_call()
+    @log_function_call
     def register_user(self, login, passwd):
         assert len(login) > 0 and len(login) <= 20, 'login length'
         assert len(passwd) == 64, 'passwd length'
@@ -53,7 +53,7 @@ class RssService(object):
         return tuple([{'id': feed.id, 'title': feed.title, 'url': feed.url}
             for feed in user.feeds])
 
-    @log_function_call()
+    @log_function_call
     def reorder_channels(self, new_order):
         feeds = (self.db.query(user_feeds_table.c.feed_id)
                      .filter(user_feeds_table.c.user_id == self.user_id)
@@ -82,7 +82,7 @@ class RssService(object):
         else:
             self.db.commit()
 
-    @log_function_call()
+    @log_function_call
     def add_channel(self, url):
         user = self.db.load(User, id=self.user_id)
         feed = Feed(url=url)
@@ -94,7 +94,7 @@ class RssService(object):
         server = jsonrpclib.Server(url)
         server._notify.reload_feeds()
 
-    @log_function_call()
+    @log_function_call
     def remove_channel(self, channel_id):
         user = self.db.load(User, id=self.user_id)
         for feed in user.feeds:
@@ -105,7 +105,7 @@ class RssService(object):
         else:
             raise Exception('Cannot find channel')
 
-    @log_function_call()
+    @log_function_call
     def has_unread_entries(self, channel_id):
         return len(self.get_unread_entries(self.user_id, channel_id)) > 0
 
@@ -117,7 +117,7 @@ class RssService(object):
     def get_entries(self, channel_id, limit=None, offset=None):
         return self._get_entries(self.user_id, channel_id, limit=limit, offset=offset)
 
-    @log_function_call()
+    @log_function_call
     def set_entry_read(self, entry_id, read):
         user = self.db.load(User, id=self.user_id)
         entry = user.get_users_entry(entry_id)

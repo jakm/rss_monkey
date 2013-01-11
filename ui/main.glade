@@ -1,16 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <!-- interface-requires gtk+ 3.0 -->
-  <object class="GtkImage" id="image2">
-    <property name="visible">True</property>
-    <property name="can_focus">False</property>
-    <property name="stock">gtk-remove</property>
-  </object>
-  <object class="GtkImage" id="image6">
-    <property name="visible">True</property>
-    <property name="can_focus">False</property>
-    <property name="stock">gtk-refresh</property>
-  </object>
   <object class="GtkListStore" id="channels_liststore">
     <columns>
       <!-- column-name id -->
@@ -27,12 +17,19 @@
       <column type="gint"/>
       <!-- column-name title -->
       <column type="gchararray"/>
+      <!-- column-name read -->
+      <column type="gboolean"/>
     </columns>
   </object>
   <object class="GtkImage" id="image1">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="stock">gtk-new</property>
+  </object>
+  <object class="GtkImage" id="image2">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="stock">gtk-remove</property>
   </object>
   <object class="GtkImage" id="image3">
     <property name="visible">True</property>
@@ -48,6 +45,11 @@
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="stock">gtk-properties</property>
+  </object>
+  <object class="GtkImage" id="image6">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="stock">gtk-refresh</property>
   </object>
   <object class="GtkWindow" id="main_window">
     <property name="width_request">1000</property>
@@ -205,6 +207,9 @@
                     <property name="vexpand">True</property>
                     <property name="model">channels_liststore</property>
                     <signal name="cursor-changed" handler="on_channels_treeview_cursor_changed" swapped="no"/>
+                    <child internal-child="selection">
+                      <object class="GtkTreeSelection" id="treeview-selection1"/>
+                    </child>
                     <child>
                       <object class="GtkTreeViewColumn" id="channels_column">
                         <property name="title" translatable="yes">Kanály</property>
@@ -243,10 +248,19 @@
                         <property name="can_focus">True</property>
                         <property name="model">entries_liststore</property>
                         <signal name="cursor-changed" handler="on_entries_treeview_cursor_changed" swapped="no"/>
+                        <child internal-child="selection">
+                          <object class="GtkTreeSelection" id="treeview-selection2"/>
+                        </child>
                         <child>
                           <object class="GtkTreeViewColumn" id="title_column">
                             <property name="title" translatable="yes">Titul</property>
                             <property name="clickable">True</property>
+                            <child>
+                              <object class="GtkCellRendererToggle" id="read_view"/>
+                              <attributes>
+                                <attribute name="active">2</attribute>
+                              </attributes>
+                            </child>
                             <child>
                               <object class="GtkCellRendererText" id="title_view1"/>
                               <attributes>

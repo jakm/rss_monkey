@@ -1,5 +1,6 @@
 # -*- coding: utf8 -*-
 
+import functools
 import logging
 from threading import Lock
 from twisted.internet import threads
@@ -20,21 +21,18 @@ def singleton(cls):
 
 
 def defer_to_thread(fnc):
+    @functools.wraps(fnc)
     def wrapper(*args, **kwargs):
         return threads.deferToThread(fnc, *args, **kwargs)
-    wrapper.__name__ = fnc.__name__
-    wrapper.__doc__ = fnc.__doc__
     return wrapper
 
 
-def log_function_call(level=logging.DEBUG, log_params=True, log_result=True):
-    log_function_call.lock = Lock()
-    log_function_call.call_order = 0
-
-    def decorator(fnc):
+def log_function_call(function=None, level=logging.DEBUG, log_params=True, log_result=True):
+    def decorator(function):
         if logging.root.level <= level:
+            @functools.wraps(function)
             def logging_wrapper(*args, **kwargs):
-                logger = logging.getLogger(fnc.__module__)
+                logger = logging.getLogger(function.__module__)
                 if logger.level == logging.NOTSET:
                     logger.setLevel(logging.root.level)
 
@@ -47,10 +45,10 @@ def log_function_call(level=logging.DEBUG, log_params=True, log_result=True):
                     args_ = ','.join(map(str, args))
                     kwargs_ = ','.join(['%s=%s' %
                         (str(k), str(v)) for k, v in kwargs.iteritems()])
-                    params = '%s,%s' % (args_, kwargs_)
-                logger.log(level, '[%d] Called: %s(%s)', call_order, fnc.__name__, params)
+                    params = ','.join([x for x in (args_, kwargs_) if x != ''])
+                logger.log(level, '[%d] Called: %s(%s)', call_order, function.__name__, params)
 
-                result = fnc(*args, **kwargs)
+                result = function(*args, **kwargs)
 
                 if log_result:
                     logger.log(level, '[%d] Result: %s', call_order, result)
@@ -58,14 +56,19 @@ def log_function_call(level=logging.DEBUG, log_params=True, log_result=True):
                     logger.log(level, '[%d] Return', call_order)
 
                 return result
-
-            logging_wrapper.__name__ = fnc.__name__
-            logging_wrapper.__doc__ = fnc.__doc__
             return logging_wrapper
         else:
+            @functools.wraps(function)
             def dummy_wrapper(*args, **kwargs):
-                return fnc(*args, **kwargs)
-            dummy_wrapper.__name__ = fnc.__name__
-            dummy_wrapper.__doc__ = fnc.__doc__
+                return function(*args, **kwargs)
             return dummy_wrapper
-    return decorator
+
+    if not function:  # User passed in some optional argument
+        def waiting_for_func(function):
+            return decorator(function)
+        return waiting_for_func
+
+    else:
+        return decorator(function)
+log_function_call.lock = Lock()
+log_function_call.call_order = 0

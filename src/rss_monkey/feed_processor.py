@@ -92,19 +92,19 @@ class FeedProcessor(object):
     download_timeout = None  # TODO: timeout!!!
     task = None
 
-    @log_function_call()
+    @log_function_call
     def schedule_jobs(self):
         assert not self.task, 'task planned'
 
         self.task = task.LoopingCall(self.process_feeds)
         return self._start_task()
 
-    @log_function_call()
+    @log_function_call
     def reschedule(self):
         self.stop_jobs()
         return self._start_task()
 
-    @log_function_call()
+    @log_function_call
     def stop_jobs(self):
         if self.task and self.task.running:
             LOG.info('Stopping task')
@@ -112,7 +112,7 @@ class FeedProcessor(object):
         else:
             LOG.info('Task to stop not running')
 
-    @log_function_call()
+    @log_function_call
     def process_feeds(self):
         feed_ids = self._get_feed_ids()
 
@@ -124,23 +124,23 @@ class FeedProcessor(object):
 
         return defer.DeferredList(defers)
 
-    @log_function_call()
+    @log_function_call
     def _start_task(self):
         LOG.info('Starting task (interval: %d', self.download_interval)
         return self.task.start(self.download_interval)
 
-    @log_function_call()
+    @log_function_call
     def _get_feed_ids(self):
         return (res[0] for res in self.db.query(Feed.id).all())
 
-    @log_function_call()
+    @log_function_call
     def process_feed(self, feed_id):
         LOG.debug('Processing feed (feed_id: %d', feed_id)
         feed = self.get_feed_from_db(feed_id)
         data = self.download_feed(feed)
         self.update_feed(feed, data)
 
-    @log_function_call()
+    @log_function_call
     def get_feed_from_db(self, feed_id):
         return self.db.load(Feed, id=feed_id)
 
@@ -173,7 +173,7 @@ class FeedProcessor(object):
 
         self.db.commit()
 
-    @log_function_call()
+    @log_function_call
     def errback(self, failure, feed_id):
         LOG.error('Can not download feed %d: %s', feed_id, failure.getErrorMessage())
 
@@ -195,7 +195,7 @@ class FeedProcessorService(service.Service):
 class FeedProcessorRpcServer(JSONRPCServer):
     feed_processor = None
 
-    @log_function_call()
+    @log_function_call
     def jsonrpc_reload_feeds(self):
         LOG.info('Reschedule task')
         self.feed_processor.reschedule()

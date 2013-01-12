@@ -61,6 +61,14 @@ class IRssService(IService):
         Bind user with channel. If channel doesn't exist create new record.
 
         @param url str, URL of channel
+        @return int, Channel ID
+        """
+
+    def reload_channel(self, channel_id):
+        """
+        Instruct 'feed processor' to reload data of channel.
+
+        @param channel_id int, Channel ID
         """
 
     def remove_channel(self, channel_id):

@@ -456,10 +456,18 @@ class MainWindow(object):
 
         self.do_progress(True, 'Přidávám kanál ...')
         try:
+            channel_id = None
             try:
-                yield self.client.add_channel(dialog.url)
+                channel_id = yield self.client.add_channel(dialog.url)
             except:
-                raise # TODO: zbytecne prehazovani vyjimky
+                show_error_dialog(self.main_window, 'Při přidávání kanálu nastala chyba. Zkuste to později.')
+                raise  # skip code below
+
+            try:
+                yield self.client.reload_channel(channel_id)
+            except:
+                show_error_dialog(self.main_window, 'Při načítání kanálu nastala chyba. Zkuste později refresh kanálů.')
+                raise  # skip code below
 
             channels = yield self.get_channels()
             self.show_channels(channels)
@@ -510,9 +518,19 @@ class MainWindow(object):
     def on_channels_treeview_cursor_changed(self, widget, *data):
         channel_id = self.get_selected_channel_id()
 
-        entries = yield self.get_entries(channel_id)
+        self.do_progress(True, 'Načítám položky ...')
+        try:
+            entries = yield self.get_entries(channel_id)
+        except Exception as e:
+            LOG.warning('Exception when loading entries: %s: %s', e.__class__.__name__, str(e))
 
-        yield self.show_entries(entries)
+            show_error_dialog(self.main_window, 'Nastala chyba - zkuste restartovat aplikaci')
+
+            self.do_progress(False, '...')
+        else:
+            self.do_progress(False, 'Položka označena jako přečtená ...')
+
+            yield self.show_entries(entries)
 
     @defer.inlineCallbacks
     def on_entries_treeview_cursor_changed(self, widget, *data):

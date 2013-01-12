@@ -89,10 +89,14 @@ class RssService(object):
         user.feeds.append(feed)
         self.db.commit()
 
-        # notify feed processor to reload feeds
+        return feed.id
+
+    @log_function_call
+    def reload_channel(self, channel_id):
+        # send RPC to feed processor
         url = 'http://localhost:%d' % self.feed_processor_rpc_port
         server = jsonrpclib.Server(url)
-        server._notify.reload_feeds()
+        server.reload_feed(channel_id)
 
     @log_function_call
     def remove_channel(self, channel_id):
@@ -136,6 +140,8 @@ class RssService(object):
             LOG.debug('Using simple get (limit and offset are None)')
             entries = user.get_users_entries(feed=feed, read=read)
         else:
+            raise NotImplementedError('Not tested!!!')
+
             LOG.debug('Using complex query (limit: %s, offset: %s', limit, offset)
             q = (self.db.query(FeedEntry)
                         .filter(FeedEntry.id == user_entries_table.c.entry_id,

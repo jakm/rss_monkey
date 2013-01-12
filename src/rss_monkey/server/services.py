@@ -2,6 +2,7 @@
 
 import jsonrpclib
 import logging
+from sqlalchemy.exc import IntegrityError
 from zope.interface import implements
 
 from rss_monkey.common.model import (User, Feed, FeedEntry, user_feeds_table,
@@ -85,12 +86,20 @@ class RssService(object):
 
     @log_function_call
     def add_channel(self, url):
-        user = self.db_registry().load(User, id=self.user_id)
-        feed = Feed(url=url)
-        user.feeds.append(feed)
-        self.db_registry().commit()
+        try:
+            user = self.db_registry().load(User, id=self.user_id)
+            feed = Feed(url=url)
+            user.feeds.append(feed)
+            self.db_registry().commit()
 
-        return feed.id
+            return feed.id
+        except IntegrityError as e:
+            self.db_registry().rollback()
+            code, msg = e.orig
+            if code == 1062:
+                raise ValueError('Channel exists')
+            else:
+                raise
 
     @log_function_call
     def reload_channel(self, channel_id):
@@ -109,7 +118,7 @@ class RssService(object):
                 self.db_registry().commit()
                 break
         else:
-            raise Exception('Cannot find channel')
+            raise ValueError('Cannot find channel')
 
     @log_function_call
     def has_unread_entries(self, channel_id):

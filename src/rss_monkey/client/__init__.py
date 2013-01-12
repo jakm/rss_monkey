@@ -2,8 +2,8 @@
 
 import logging
 
+from fastjsonrpc.jsonrpc import JSONRPCError
 from urllib2 import urlparse
-
 from twisted.internet import defer
 
 from rss_monkey.client.proxy import JsonRpcProxy
@@ -37,10 +37,30 @@ class RssClient(object):
 
         return self.rpc_proxy.get_channels()
 
+    @defer.inlineCallbacks
     def add_channel(self, url):
         self._check_connected()
 
-        return self.rpc_proxy.add_channel(url)
+        # try add channel, if exists return its id
+
+        channel_id = None
+        try:
+            channel_id = yield self.rpc_proxy.add_channel(url)
+        except JSONRPCError as e:
+            if str(e) == 'Channel exists':
+                channels = yield self.get_channels()
+                for channel in channels:
+                    if channel['url'] == url:
+                        channel_id = channel['id']
+                        break
+                else:
+                    msg = 'Race condition when adding channel (url: %s)' % url
+                    LOG.warning(msg)
+                    raise ValueError(msg)
+            else:
+                raise
+
+        defer.returnValue(channel_id)
 
     def reload_channel(self, channel_id):
         self._check_connected()

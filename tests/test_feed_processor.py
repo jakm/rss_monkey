@@ -5,23 +5,36 @@
 # logging.basicConfig(level=logging.INFO)
 
 from twisted.trial import unittest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.pool import StaticPool
 
-from rss_monkey.common.db import Db
+from rss_monkey.common.db import DbRegistry
 from rss_monkey.common.model import Feed
 from rss_monkey.feed_processor import FeedProcessor
-
-from utils import DbMock
 
 
 class ProcessFeedTest(unittest.TestCase):
 
     def setUp(self):
-        # prepare mock database object
-        self.db = DbMock(Db, Feed.metadata)
+        engine = create_engine('sqlite:///:memory:',
+                               connect_args={'check_same_thread': False},
+                               poolclass=StaticPool)
+
+        Feed.metadata.create_all(engine)
+
+        Session = sessionmaker(bind=engine)
+
+        self.db_registry = DbRegistry()
+        self.db_registry.session_registry = scoped_session(Session)
+        self.db = self.db_registry()
+
+    def get_feed_processor(self):
+        processor = FeedProcessor()
+        processor.db_registry = self.db_registry
+        return processor
 
     def test_get_one_feed(self):
-        #setup_debug_logging()
-
         feed = Feed()
         feed.url = 'http://www.abclinuxu.cz/auto/zpravicky.rss'
 
@@ -32,8 +45,7 @@ class ProcessFeedTest(unittest.TestCase):
         feed_id = feed.id
 
         # test FeedProcessor
-        processor = FeedProcessor()
-        processor.db = self.db
+        processor = self.get_feed_processor()
         processor.process_feed(feed_id)
 
         # check result
@@ -41,7 +53,6 @@ class ProcessFeedTest(unittest.TestCase):
         self.assertTrue(updated_feed.title, 'Feed was not updated')
 
     def test_process_feeds(self):
-
         # prepare test feeds
         feed_urls = ['http://www.abclinuxu.cz/auto/zpravicky.rss',
                      'http://www.root.cz/rss/zpravicky/']
@@ -54,8 +65,7 @@ class ProcessFeedTest(unittest.TestCase):
             feed_ids.append(feed.id)
 
         # test FeedProcessor
-        processor = FeedProcessor()
-        processor.db = self.db
+        processor = self.get_feed_processor()
         dl = processor.process_feeds()
 
         def check_result(result):

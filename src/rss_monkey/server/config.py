@@ -62,24 +62,25 @@ class AppConfig(PythonConfig):
 
         return create_engine(connection_string, **kwargs)
 
-    @Object(scope.PROTOTYPE, lazy_init=True)
-    def db_session(self):
+    @Object(lazy_init=True)
+    def db_session_registry(self):
         LOG.info('Loading db_session object')
-        from sqlalchemy.orm import sessionmaker
+        from sqlalchemy.orm import sessionmaker, scoped_session
 
         engine = self.db_engine()
 
         Session = sessionmaker(bind=engine)
+        session_registry = scoped_session(Session)
 
-        return Session()
+        return session_registry
 
-    @Object(scope.PROTOTYPE, lazy_init=True)
-    def db(self):
-        LOG.info('Loading db object')
-        from rss_monkey.common.db import Db
-        db = Db()
-        db.session = self.db_session()
-        return db
+    @Object(lazy_init=True)
+    def db_registry(self):
+        LOG.info('Loading db_registry object')
+        from rss_monkey.common.db import DbRegistry
+        db_registry = DbRegistry()
+        db_registry.session_registry = self.db_session_registry()
+        return db_registry
 
     @Object(lazy_init=True)
     def feed_processor(self):
@@ -87,7 +88,7 @@ class AppConfig(PythonConfig):
         from rss_monkey.feed_processor import FeedProcessor
 
         processor = FeedProcessor()
-        processor.db = self.db()
+        processor.db_registry = self.db_registry()
 
         processor.download_interval = self.config.getint('feed_processor', 'download_interval')
         processor.download_timeout = self.config.getint('feed_processor', 'download_timeout')
@@ -130,8 +131,9 @@ class AppConfig(PythonConfig):
         from rss_monkey.server.services import RssService
 
         service = RssService()
-        service.db = self.db()
+        service.db_registry = self.db_registry()
         service.feed_processor_rpc_port = self.config.getint('feed_processor_rpc', 'port')
+        service.ssl_enabled = self.ssl_enabled()
 
         return service
 
@@ -141,7 +143,7 @@ class AppConfig(PythonConfig):
         from rss_monkey.server.services import RegistrationService
 
         service = RegistrationService()
-        service.db = self.db()
+        service.db_registry = self.db_registry()
 
         return service
 
@@ -182,7 +184,7 @@ class AppConfig(PythonConfig):
         from rss_monkey.server.authentication import DbCredentialsChecker
 
         portal = Portal(PrivateServiceRealm(self.rss_resource_factory()),
-                        [DbCredentialsChecker(self.db())])
+                        [DbCredentialsChecker(self.db_registry())])
 
         credential_factory = BasicCredentialFactory("RssApi")
 
@@ -239,10 +241,14 @@ class AppConfig(PythonConfig):
 
         return ssl.DefaultOpenSSLContextFactory(private_key, ca_cert)
 
+    @Object(lazy_init=True)
+    def ssl_enabled(self):
+        return self.config.getboolean('global', 'enable_ssl')
+
     def _get_internet_server(self, port, site):
         from twisted.application import internet
 
-        enable_ssl = self.config.getboolean('global', 'enable_ssl')
+        enable_ssl = self.ssl_enabled()
 
         LOG.info('SSL enabled: %s', enable_ssl)
 

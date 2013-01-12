@@ -87,7 +87,7 @@ class FeedParser(object):
 
 
 class FeedProcessor(object):
-    db = None
+    db_registry = None
     download_interval = None
     download_timeout = None  # TODO: timeout!!!
     task = None
@@ -131,7 +131,7 @@ class FeedProcessor(object):
 
     @log_function_call
     def _get_feed_ids(self):
-        return (res[0] for res in self.db.query(Feed.id).all())
+        return (res[0] for res in self.db_registry().query(Feed.id).all())
 
     @log_function_call
     def process_feed(self, feed_id):
@@ -142,7 +142,7 @@ class FeedProcessor(object):
 
     @log_function_call
     def get_feed_from_db(self, feed_id):
-        return self.db.load(Feed, id=feed_id)
+        return self.db_registry().load(Feed, id=feed_id)
 
     @log_function_call(log_result=False)
     def download_feed(self, feed):
@@ -171,7 +171,7 @@ class FeedProcessor(object):
                               date=record['date'])
             feed.add_entry(entry)
 
-        self.db.commit()
+        self.db_registry().commit()
 
     @log_function_call
     def errback(self, failure, feed_id):

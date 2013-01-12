@@ -1,6 +1,23 @@
 # -*- coding: utf8 -*-
 
+from sqlalchemy.util import ThreadLocalRegistry
+
 from rss_monkey.common.utils import log_function_call
+
+
+class DbRegistry(object):
+    session_registry = None
+
+    def __init__(self):
+        def new_db():
+            db = Db()
+            db.session = self.session_registry()
+            return db
+
+        self.db_registry = ThreadLocalRegistry(new_db)
+
+    def __call__(self):
+        return self.db_registry()
 
 
 class Db(object):

@@ -35,8 +35,8 @@ class DbCredentialsChecker(object):
 
     credentialInterfaces = (IUsernamePassword,)
 
-    def __init__(self, db):
-        self.db = db
+    def __init__(self, db_registry):
+        self.db_registry = db_registry
 
     def requestAvatarId(self, credentials):
         for interface in self.credentialInterfaces:
@@ -49,7 +49,7 @@ class DbCredentialsChecker(object):
 
     @defer_to_thread
     def checkCredentials(self, credentials):
-        query = self.db.query(User.id, User.passwd).filter(User.login == credentials.username)
+        query = self.db_registry().query(User.id, User.passwd).filter(User.login == credentials.username)
 
         try:
             uid, passwd = query.one()

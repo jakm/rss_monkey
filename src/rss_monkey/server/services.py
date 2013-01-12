@@ -24,7 +24,7 @@ class TestService(object):
 class RegistrationService(object):
     implements(IRegistrationService)
 
-    db = None
+    db_registry = None
 
     @log_function_call
     def register_user(self, login, passwd):
@@ -33,29 +33,30 @@ class RegistrationService(object):
 
         try:
             user = User(login=login, passwd=passwd)
-            self.db.store(user)
-            self.db.commit()
+            self.db_registry().store(user)
+            self.db_registry().commit()
         except Exception:
-            self.db.rollback()
+            self.db_registry().rollback()
             raise ValueError('Registration failed')
 
 
 class RssService(object):
     implements(IRssService)
 
-    db = None
+    db_registry = None
     feed_processor_rpc_port = None
     user_id = None
+    ssl_enabled = False
 
     @log_function_call(log_result=False)
     def get_channels(self):
-        user = self.db.load(User, id=self.user_id)
+        user = self.db_registry().load(User, id=self.user_id)
         return tuple([{'id': feed.id, 'title': feed.title, 'url': feed.url}
             for feed in user.feeds])
 
     @log_function_call
     def reorder_channels(self, new_order):
-        feeds = (self.db.query(user_feeds_table.c.feed_id)
+        feeds = (self.db_registry().query(user_feeds_table.c.feed_id)
                      .filter(user_feeds_table.c.user_id == self.user_id)
                      .all())
 
@@ -70,41 +71,42 @@ class RssService(object):
                 except ValueError:
                     pass
 
-                self.db.execute(
+                self.db_registry().execute(
                     user_feeds_table.update()
                         .where(user_feeds_table.c.feed_id == feed_id)
                         .where(user_feeds_table.c.user_id == self.user_id)
                         .values({user_feeds_table.c.order: order})
                 )
         except:
-            self.db.rollback()
+            self.db_registry().rollback()
             raise
         else:
-            self.db.commit()
+            self.db_registry().commit()
 
     @log_function_call
     def add_channel(self, url):
-        user = self.db.load(User, id=self.user_id)
+        user = self.db_registry().load(User, id=self.user_id)
         feed = Feed(url=url)
         user.feeds.append(feed)
-        self.db.commit()
+        self.db_registry().commit()
 
         return feed.id
 
     @log_function_call
     def reload_channel(self, channel_id):
         # send RPC to feed processor
-        url = 'http://localhost:%d' % self.feed_processor_rpc_port
+        protocol = 'https' if self.ssl_enabled else 'http'
+        url = '%s://localhost:%d' % (protocol, self.feed_processor_rpc_port)
         server = jsonrpclib.Server(url)
         server.reload_feed(channel_id)
 
     @log_function_call
     def remove_channel(self, channel_id):
-        user = self.db.load(User, id=self.user_id)
+        user = self.db_registry().load(User, id=self.user_id)
         for feed in user.feeds:
             if feed.id == channel_id:
                 user.feeds.remove(feed)
-                self.db.commit()
+                self.db_registry().commit()
                 break
         else:
             raise Exception('Cannot find channel')
@@ -123,13 +125,13 @@ class RssService(object):
 
     @log_function_call
     def set_entry_read(self, entry_id, read):
-        user = self.db.load(User, id=self.user_id)
+        user = self.db_registry().load(User, id=self.user_id)
         entry = user.get_users_entry(entry_id)
         user.set_entry_read(entry, read)
-        self.db.commit()
+        self.db_registry().commit()
 
     def _get_entries(self, user_id, channel_id, read=None, limit=None, offset=None):
-        user = self.db.load(User, id=user_id)
+        user = self.db_registry().load(User, id=user_id)
         try:
             feed = [f for f in user.feeds if f.id == channel_id][0]
         except IndexError:
@@ -143,7 +145,7 @@ class RssService(object):
             raise NotImplementedError('Not tested!!!')
 
             LOG.debug('Using complex query (limit: %s, offset: %s', limit, offset)
-            q = (self.db.query(FeedEntry)
+            q = (self.db_registry().query(FeedEntry)
                         .filter(FeedEntry.id == user_entries_table.c.entry_id,
                                 user_entries_table.c.user_id == user.id,
                                 user_entries_table.c.feed_id == feed.id))

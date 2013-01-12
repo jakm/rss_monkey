@@ -40,12 +40,17 @@ class RssClient(object):
     def add_channel(self, url):
         self._check_connected()
 
-        self.rpc_proxy.add_channel(url)
+        return self.rpc_proxy.add_channel(url)
+
+    def reload_channel(self, channel_id):
+        self._check_connected()
+
+        return self.rpc_proxy.reload_channel(channel_id)
 
     def remove_channel(self, channel_id):
         self._check_connected()
 
-        self.rpc_proxy.remove_channel(channel_id)
+        return self.rpc_proxy.remove_channel(channel_id)
 
     def has_unread_entries(self, channel_id):
         self._check_connected()
@@ -65,7 +70,7 @@ class RssClient(object):
     def set_entry_read(self, entry_id, read):
         self._check_connected()
 
-        self.rpc_proxy.set_entry_read(entry_id, read)
+        return self.rpc_proxy.set_entry_read(entry_id, read)
 
     def _check_connected(self):
         if not self.is_connected:

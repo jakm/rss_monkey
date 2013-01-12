@@ -6,6 +6,7 @@ from ConfigParser import RawConfigParser
 from springpython.config import Object, PythonConfig
 from springpython.context import scope
 from twisted.internet import reactor
+from twisted.python import log
 
 CONFIG_FILE = '/etc/rss_monkey_server.ini'
 
@@ -24,6 +25,9 @@ class AppConfig(PythonConfig):
         if filename == '' or filename == 'stdout':
             filename = None
 
+        logging_observer = log.PythonLoggingObserver()
+        logging_observer.start()
+
         logging.basicConfig(format=format, level=level, filename=filename)
 
     @Object(lazy_init=True)
@@ -36,9 +40,6 @@ class AppConfig(PythonConfig):
         db = self.config.get('database', 'db')
         pool_size = self.config.getint('database', 'pool_size')
         debug = self.config.getboolean('database', 'debug')
-
-        LOG.debug('Database: host=%s, user=%s, passwd=***, db=%s, pool_size=%d',
-            host,  user, passwd, db, pool_size)
 
         return {'host': host, 'user': user, 'passwd': passwd, 'db': db,
                 'pool_size': pool_size, 'debug': debug}

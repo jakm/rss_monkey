@@ -57,27 +57,6 @@ class UserConfig(object):
             self.parser.write(f)
 
 
-class Task(object):
-
-    def __init__(self, fnc, canceller=None, *args, **kw):
-        self.deferred = defer.Deferred(canceller)
-
-        self._fnc = fnc
-        self._args = args
-        self._kw = kw
-
-    def run(self):
-        LOG.debug('Executing %s: %s', self.__class__.__name__, self._fnc.__name__)
-
-        d = task.deferLater(reactor, 0, self._fnc, *self._args, **self._kw)
-        d.chainDeferred(self.deferred)
-
-        return self.deferred
-
-    def cancel(self):
-        self.deferred.cancel()
-
-
 class ScheduledTask(object):
 
     def __init__(self, fnc, canceller=None, *args, **kw):
@@ -433,6 +412,7 @@ class MainWindow(object):
     def on_disconnect_mi_activate(self, widget, *data):
         yield self.disconnect()
 
+    @log_function_call
     @defer.inlineCallbacks
     def on_new_channel_mi_activate(self, widget, *data):
         assert self.is_connected, 'not connected'

@@ -126,7 +126,6 @@ class FeedProcessor(object):
 
     @log_function_call
     def _start_task(self):
-        LOG.info('Starting task (interval: %d', self.download_interval)
         return self.task.start(self.download_interval)
 
     @log_function_call
@@ -135,7 +134,6 @@ class FeedProcessor(object):
 
     @log_function_call
     def process_feed(self, feed_id):
-        LOG.debug('Processing feed (feed_id: %d)', feed_id)
         feed = self.get_feed_from_db(feed_id)
         data = self.download_feed(feed)
         self.update_feed(feed, data)

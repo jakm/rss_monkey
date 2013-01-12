@@ -677,6 +677,7 @@ class MainWindow(object):
     def remove_selected_channel(self):
         selection = self.channels_treeview.get_selection()
         self.channels_liststore.remove(selection.get_selected()[1])
+        self.clear_entries()
 
     def clear_channels(self):
         self.channels_liststore.clear()

@@ -4,7 +4,6 @@ from fastjsonrpc.server import JSONRPCServer
 from zope.interface.interface import Method
 
 from rss_monkey.common.context import AppContext
-from rss_monkey.common.utils import defer_to_thread
 
 
 class ApiResourceFactory(object):
@@ -38,7 +37,6 @@ class ApiResourceFactory(object):
         return methods
 
     def create_method(self, method_name):
-        @defer_to_thread
         def wrapper(self_, *args, **kw):
             method = getattr(self_.service, method_name)
             return method(*args, **kw)

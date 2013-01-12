@@ -8,8 +8,7 @@ from fastjsonrpc.server import JSONRPCServer
 from twisted.application import service
 from twisted.internet import defer, task, threads
 
-from rss_monkey.common.model import Feed, FeedEntry
-from rss_monkey.common.utils import log_function_call
+from rss_monkey.common.utils import defer_to_thread, log_function_call
 
 logging.basicConfig()
 LOG = logging.getLogger(__name__)
@@ -87,7 +86,7 @@ class FeedParser(object):
 
 
 class FeedProcessor(object):
-    db_registry = None
+    db = None
     download_interval = None
     download_timeout = None  # TODO: timeout!!!
     task = None
@@ -112,64 +111,54 @@ class FeedProcessor(object):
         else:
             LOG.info('Task to stop not running')
 
+    @defer.inlineCallbacks
     @log_function_call
     def process_feeds(self):
-        feed_ids = self._get_feed_ids()
+        feed_ids = yield self.db.get_feed_ids()
 
-        defers = []
         for feed_id in feed_ids:
-            d = threads.deferToThread(self.process_feed, feed_id)
-            d.addErrback(self.errback, feed_id)
-            defers.append(d)
-
-        return defer.DeferredList(defers)
+            try:
+                yield self.process_feed(feed_id)
+            except Exception as e:
+                LOG.error('Can not download feed %d: %s', feed_id, str(e))
 
     @log_function_call
     def _start_task(self):
         return self.task.start(self.download_interval)
 
-    @log_function_call
-    def _get_feed_ids(self):
-        return (res[0] for res in self.db_registry().query(Feed.id).all())
-
+    @defer.inlineCallbacks
     @log_function_call
     def process_feed(self, feed_id):
-        feed = self.get_feed_from_db(feed_id)
-        data = self.download_feed(feed)
-        self.update_feed(feed, data)
+        feed = yield self.db.get_feed(feed_id)
+        data = yield self.download_feed(feed)
+        yield self.update_feed(feed, data)
 
-    @log_function_call
-    def get_feed_from_db(self, feed_id):
-        return self.db_registry().load(Feed, id=feed_id)
-
+    @defer_to_thread
     @log_function_call(log_result=False)
     def download_feed(self, feed):
-        parser = FeedParser(feed.url)
-        data = parser.parse(modified=feed.modified)
+        parser = FeedParser(feed['url'])
+        data = parser.parse(modified=feed['modified'])
         return data
 
+    @defer.inlineCallbacks
     @log_function_call(log_params=False)
     def update_feed(self, feed, data):
         channel = data[0]
 
-        if feed.modified is None:
-            LOG.debug('Feed %d: storing channel data', feed.id)
-            feed.title = channel['title']
-            feed.description = channel['description']
-            feed.link = channel['link']
-
         # have to store always
-        feed.modified = channel['modified']
+        params = {'modified': channel['modified']}
+
+        if feed['modified'] is None:
+            LOG.debug('Feed %d: storing channel data', feed['id'])
+            params['title'] = channel['title']
+            params['description'] = channel['description']
+            params['link'] = channel['link']
+
+        yield self.db.update_feed(feed['id'], params)
 
         records = data[1]
         for record in records:
-            entry = FeedEntry(title=record['title'],
-                              summary=record['summary'],
-                              link=record['link'],
-                              date=record['date'])
-            feed.add_entry(entry)
-
-        self.db_registry().commit()
+            yield self.db.insert_entry(feed['id'], record)
 
     @log_function_call
     def errback(self, failure, feed_id):
@@ -198,11 +187,14 @@ class FeedProcessorRpcServer(JSONRPCServer):
     #     LOG.info('Reschedule task')
     #     self.feed_processor.reschedule()
 
-    @log_function_call
     @defer.inlineCallbacks
+    @log_function_call
     def jsonrpc_reload_feed(self, feed_id):
+        if not isinstance(feed_id, int):
+            raise TypeError("'%s' object is not int" % type(feed_id))
+
         try:
-            yield threads.deferToThread(self.feed_processor.process_feed, feed_id)
+            yield self.feed_processor.process_feed(feed_id)
         except Exception as e:
             LOG.error('Can not download feed %d: %s', feed_id, str(e))
             raise

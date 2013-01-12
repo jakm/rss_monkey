@@ -2,16 +2,15 @@
 
 import collections
 
-from sqlalchemy.orm.exc import NoResultFound
 from twisted.cred import error
 from twisted.cred.credentials import IUsernamePassword
 from twisted.cred.checkers import ICredentialsChecker
 from twisted.cred.portal import IRealm
+from twisted.internet import defer
 from twisted.web.resource import IResource
 from zope.interface import implements
 
-from rss_monkey.common.model import User
-from rss_monkey.common.utils import defer_to_thread
+from rss_monkey.common.db import NoResultError
 
 
 class PrivateServiceRealm(object):
@@ -35,8 +34,8 @@ class DbCredentialsChecker(object):
 
     credentialInterfaces = (IUsernamePassword,)
 
-    def __init__(self, db_registry):
-        self.db_registry = db_registry
+    def __init__(self, db):
+        self.db = db
 
     def requestAvatarId(self, credentials):
         for interface in self.credentialInterfaces:
@@ -47,17 +46,18 @@ class DbCredentialsChecker(object):
 
         return self.checkCredentials(credentials)
 
-    @defer_to_thread
+    @defer.inlineCallbacks
     def checkCredentials(self, credentials):
-        query = self.db_registry().query(User.id, User.passwd).filter(User.login == credentials.username)
+
+        user = yield self.db.get_user(credentials.username)
 
         try:
-            uid, passwd = query.one()
+            uid, passwd = user['id'], user['passwd']
 
             if passwd.lower() != credentials.password.lower():
                 raise error.UnauthorizedLogin('Password mismatch')
 
-            return uid
+            defer.returnValue(uid)
 
-        except NoResultFound:
+        except NoResultError:
             raise error.UnauthorizedLogin('Username unknown')

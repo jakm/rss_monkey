@@ -38,49 +38,47 @@ class AppConfig(PythonConfig):
         user = self.config.get('database', 'user')
         passwd = self.config.get('database', 'passwd')
         db = self.config.get('database', 'db')
-        pool_size = self.config.getint('database', 'pool_size')
+        pool_size_min = self.config.getint('database', 'pool_size_min')
+        pool_size_max = self.config.getint('database', 'pool_size_max')
         debug = self.config.getboolean('database', 'debug')
 
         return {'host': host, 'user': user, 'passwd': passwd, 'db': db,
-                'pool_size': pool_size, 'debug': debug}
+                'pool_size_min': pool_size_min, 'pool_size_max': pool_size_max,
+                'debug': debug}
 
     @Object(lazy_init=True)
-    def db_engine(self):
-        LOG.info('Loading db_engine object')
-        from sqlalchemy import create_engine
+    def db_pool(self):
+        LOG.info('Loading db_pool object')
+        from twisted.enterprise import adbapi
 
         db_config = self.db_config()
 
-        connection_string = 'mysql://%s:%s@%s/%s?charset=utf8' % (
-            db_config['user'], db_config['passwd'], db_config['host'], db_config['db'])
+        kwargs = dict(host=db_config['host'],
+                      user=db_config['user'],
+                      passwd=db_config['passwd'],
+                      db=db_config['db'],
+                      charset='utf8')
 
-        kwargs = {}
-        if db_config['pool_size'] >= 0:
-            kwargs['pool_size'] = db_config['pool_size']
+        if db_config['pool_size_min'] >= 0:
+            kwargs['cp_min'] = db_config['pool_size_min']
+        if db_config['pool_size_max'] >= 0:
+            kwargs['cp_max'] = db_config['pool_size_max']
         if db_config['debug']:
-            kwargs['echo'] = True
+            kwargs['cp_noisy'] = True
 
-        return create_engine(connection_string, **kwargs)
+        dbpool = adbapi.ConnectionPool("MySQLdb", **kwargs)
 
-    @Object(lazy_init=True)
-    def db_session_registry(self):
-        LOG.info('Loading db_session object')
-        from sqlalchemy.orm import sessionmaker, scoped_session
-
-        engine = self.db_engine()
-
-        Session = sessionmaker(bind=engine)
-        session_registry = scoped_session(Session)
-
-        return session_registry
+        return dbpool
 
     @Object(lazy_init=True)
-    def db_registry(self):
-        LOG.info('Loading db_registry object')
-        from rss_monkey.common.db import DbRegistry
-        db_registry = DbRegistry()
-        db_registry.session_registry = self.db_session_registry()
-        return db_registry
+    def db(self):
+        LOG.info('Loading db object')
+        from rss_monkey.common.db import Db
+
+        db = Db()
+        db.db_pool = self.db_pool()
+
+        return db
 
     @Object(lazy_init=True)
     def feed_processor(self):
@@ -88,7 +86,7 @@ class AppConfig(PythonConfig):
         from rss_monkey.feed_processor import FeedProcessor
 
         processor = FeedProcessor()
-        processor.db_registry = self.db_registry()
+        processor.db = self.db()
 
         processor.download_interval = self.config.getint('feed_processor', 'download_interval')
         processor.download_timeout = self.config.getint('feed_processor', 'download_timeout')
@@ -131,7 +129,7 @@ class AppConfig(PythonConfig):
         from rss_monkey.server.services import RssService
 
         service = RssService()
-        service.db_registry = self.db_registry()
+        service.db = self.db()
         service.feed_processor_rpc_port = self.config.getint('feed_processor_rpc', 'port')
         service.ssl_enabled = self.ssl_enabled()
 
@@ -143,7 +141,7 @@ class AppConfig(PythonConfig):
         from rss_monkey.server.services import RegistrationService
 
         service = RegistrationService()
-        service.db_registry = self.db_registry()
+        service.db = self.db()
 
         return service
 
@@ -184,7 +182,7 @@ class AppConfig(PythonConfig):
         from rss_monkey.server.authentication import DbCredentialsChecker
 
         portal = Portal(PrivateServiceRealm(self.rss_resource_factory()),
-                        [DbCredentialsChecker(self.db_registry())])
+                        [DbCredentialsChecker(self.db())])
 
         credential_factory = BasicCredentialFactory("RssApi")
 

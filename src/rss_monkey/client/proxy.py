@@ -1,16 +1,15 @@
 # -*- coding: utf8 -*-
 
-import base64
 import logging
 import new
 from fastjsonrpc.client import Proxy
 from fastjsonrpc.jsonrpc import VERSION_2
-from twisted.internet import reactor
+from twisted.cred.credentials import Anonymous, UsernamePassword
 from twisted.internet.ssl import ClientContextFactory
-from twisted.web.client import Agent
 from zope.interface import Interface
 from zope.interface.interface import Method
 
+from rss_monkey.client.config import Config
 
 LOG = logging.getLogger(__name__)
 
@@ -70,19 +69,20 @@ class JsonRpcProxy(object):
         @param protocol str, 'http' or 'https'
         """
 
-        agent = None
+        timeout = int(Config().get('connection', 'timeout'))
+
+        if not login:
+            credentials = Anonymous
+        else:
+            credentials = UsernamePassword(login, passwd)
+
         if protocol == 'https':
-            agent = Agent(reactor, WebClientContextFactory())
-
-        extra_headers = {}
-        if login:
-            if passwd is None:
-                passwd = ''
-            basic_auth = base64.encodestring('%s:%s' % (login, passwd))
-            auth_header = "Basic " + basic_auth.strip()
-            extra_headers['Authorization'] = [auth_header]
-
-        self.proxy = Proxy(url, VERSION_2, agent=agent, extra_headers=extra_headers)
+            self.proxy = Proxy(url, VERSION_2, credentials=credentials,
+                               contextFactory=WebClientContextFactory(),
+                               connectTimeout=timeout)
+        else:
+            self.proxy = Proxy(url, VERSION_2, credentials=credentials,
+                               connectTimeout=timeout)
 
     def _close(self):
         """

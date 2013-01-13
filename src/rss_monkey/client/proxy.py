@@ -20,6 +20,9 @@ class WebClientContextFactory(ClientContextFactory):
 
 
 class JsonRpcProxy(object):
+    """
+    Client proxy using JSON-RPC.
+    """
     proxy = None
 
     def __init__(self, interface):
@@ -43,12 +46,7 @@ class JsonRpcProxy(object):
 
                 return self.proxy.callRemote(method_name, *args, **kw)
             wrapper.__name__ = method_name
-
-            doc = self.interface.get(method_name).getDoc()
-            if doc:
-                wrapper.__doc__ = (
-                    "\nWarning! This wrapper method returns a Deferred!\n\n"
-                    + doc)
+            wrapper.__doc__ = self.interface.get(method_name).getDoc()
 
             # bound it with instance
             method = new.instancemethod(wrapper, self, self.__class__)

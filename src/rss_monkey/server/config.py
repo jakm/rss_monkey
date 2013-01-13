@@ -14,6 +14,9 @@ LOG = logging.getLogger(__name__)
 
 
 class AppConfig(PythonConfig):
+    """
+    Application configuration. Used to initialize ApplicationContext.
+    """
     def __init__(self):
         super(AppConfig, self).__init__()
         self.config = RawConfigParser()

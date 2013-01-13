@@ -15,6 +15,9 @@ LOG = logging.getLogger(__name__)
 
 
 class FeedParser(object):
+    """
+    Executive class used to download and parse feed.
+    """
     def __init__(self, url):
         self.url = url
 
@@ -86,6 +89,9 @@ class FeedParser(object):
 
 
 class FeedProcessor(object):
+    """
+    Starts periodical task that download feeds and store them to database.
+    """
     db = None
     download_interval = None
     download_timeout = None  # TODO: timeout!!!
@@ -166,6 +172,9 @@ class FeedProcessor(object):
 
 
 class FeedProcessorService(service.Service):
+    """
+    Service class used to start and stop FeedProcessor.
+    """
     feed_processor = None
 
     def startService(self):
@@ -180,6 +189,9 @@ class FeedProcessorService(service.Service):
 
 
 class FeedProcessorRpcServer(JSONRPCServer):
+    """
+    JSON-RPC server used to on-demand reload of feeds.
+    """
     feed_processor = None
 
     # @log_function_call

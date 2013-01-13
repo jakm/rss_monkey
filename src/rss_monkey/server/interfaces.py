@@ -32,7 +32,8 @@ class IRegistrationService(IService):
 
         @param login str, Login name
         @param passwd str, SHA256 hash of password
-        TODO: @throw ...
+        @return Deferred
+        @throw ValueError('Registration failed')
         """
 
 
@@ -46,7 +47,7 @@ class IRssService(IService):
         Retrieve channels registered by user. Records are in format:
         {'id': int, 'title': str, 'url': str}
 
-        @return tuple, Tuple of records
+        @return Deferred, Tuple of records
         """
 
     def reorder_channels(self, new_order):
@@ -54,6 +55,7 @@ class IRssService(IService):
         Change ordering of user's channels.
 
         @param new_order sequence, Sequence of ordered channel IDs
+        @return Deferred
         """
 
     def add_channel(self, url):
@@ -61,7 +63,7 @@ class IRssService(IService):
         Bind user with channel. If channel doesn't exist create new record.
 
         @param url str, URL of channel
-        @return int, Channel ID
+        @return Deferred, Channel ID
         """
 
     def reload_channel(self, channel_id):
@@ -69,6 +71,7 @@ class IRssService(IService):
         Instruct 'feed processor' to reload data of channel.
 
         @param channel_id int, Channel ID
+        @return Deferred
         """
 
     def remove_channel(self, channel_id):
@@ -76,6 +79,7 @@ class IRssService(IService):
         Unbind user with channel. If channel is not bound with any user remove it.
 
         @param channel_id int, Channel ID
+        @return Deferred
         """
 
     def has_unread_entries(self, channel_id):
@@ -83,7 +87,7 @@ class IRssService(IService):
         True if channel has unread entries or False.
 
         @param channel_id int, Channel ID
-        @return bool
+        @return Deferred, bool
         """
 
     def get_entries(self, channel_id, limit=None, offset=None):
@@ -95,7 +99,7 @@ class IRssService(IService):
         @param channel_id int, Channel ID
         @param limit int, Maximal number of returned records or None for unlimited
         @param offset int, Number of records to skip
-        @return tuple, Tuple of records
+        @return Deferred, Tuple of records
         """
 
     def set_entry_read(self, entry_id, read):
@@ -103,5 +107,5 @@ class IRssService(IService):
         Set read status of entry.
 
         @param entry_id int, Entry ID
-        @param read bool, Read status of entry
+        @param Deferred, Read status of entry
         """

@@ -9,6 +9,9 @@ CONFIG_FILE = '/etc/rss_monkey_client.ini'
 
 @singleton
 class Config(object):
+    """
+    Client configuration. It's part of implementation.
+    """
     def __init__(self):
         self.parser = RawConfigParser()
         self.parser.read(CONFIG_FILE)
@@ -19,6 +22,9 @@ class Config(object):
 
 @singleton
 class UserConfig(object):
+    """
+    User's configuration.
+    """
     def __init__(self):
         self.path = os.path.expanduser('~/.rss_monkey.ini')
         self.parser = RawConfigParser()

@@ -6,6 +6,9 @@ from springpython.context import ApplicationContext
 
 
 class AppContext(object):
+    """
+    Static class that provides ApplicationContext.
+    """
     _context = None
 
     @staticmethod

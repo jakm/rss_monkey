@@ -7,13 +7,13 @@ from twisted.internet import threads
 
 
 def singleton(cls):
+    """
+    Decorator. Create singleton from decorated class.
+    """
 
     instances = {}
 
     def getinstance():
-        """
-        Klasicka 'getinstance' metoda singletonu.
-        """
         if cls not in instances:
             instances[cls] = cls()
         return instances[cls]
@@ -21,6 +21,9 @@ def singleton(cls):
 
 
 def defer_to_thread(fnc):
+    """
+    Decorator. Decorated function will be executed in deferred thread.
+    """
     @functools.wraps(fnc)
     def wrapper(*args, **kwargs):
         return threads.deferToThread(fnc, *args, **kwargs)
@@ -28,6 +31,13 @@ def defer_to_thread(fnc):
 
 
 def log_function_call(function=None, level=logging.DEBUG, log_params=True, log_result=True):
+    """
+    Decorator. Decorated class will be logged in entry and exit point.
+
+    @param level int, logging level when decorate function
+    @param log_params bool, Log full listing of parameters
+    @param log_result bool, Log full listing of result
+    """
     def decorator(function):
         if logging.root.level <= level:
             @functools.wraps(function)

@@ -14,6 +14,9 @@ LOG = logging.getLogger(__name__)
 
 
 class RssClient(object):
+    """
+    High-level client.
+    """
     def __init__(self):
         self._is_connected = False
         self.rpc_proxy = JsonRpcProxy(IRssService)

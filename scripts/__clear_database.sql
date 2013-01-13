@@ -5,4 +5,5 @@ DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS feeds;
 
 DROP TRIGGER IF EXISTS feed_entries_after_insert_trg;
+DROP TRIGGER IF EXISTS user_feeds_after_insert_trg;
 DROP TRIGGER IF EXISTS user_feeds_after_delete_trg;

@@ -75,8 +75,7 @@ class AppConfig(PythonConfig):
         LOG.info('Loading db object')
         from rss_monkey.common.db import Db
 
-        db = Db()
-        db.db_pool = self.db_pool()
+        db = Db(self.db_pool())
 
         return db
 

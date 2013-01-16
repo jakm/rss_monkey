@@ -70,7 +70,7 @@ class JsonRpcProxy(object):
         timeout = int(Config().get('connection', 'timeout'))
 
         if not login:
-            credentials = Anonymous
+            credentials = Anonymous()
         else:
             credentials = UsernamePassword(login, passwd)
 
